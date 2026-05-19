@@ -251,6 +251,23 @@ async def timeout_middleware(request: Request, call_next):
         )
 
 
+@app.middleware("http")
+async def no_cache_middleware(request: Request, call_next):
+    """Ensure export and tile responses are not cached by the browser.
+
+    This prevents stale frontend georaster tiles or modal images from being
+    re-used after a new export/job has started.
+    """
+    response = await call_next(request)
+    path = request.url.path or ""
+    # Disable caching for export static files and generated tiles
+    if path.startswith("/static/export") or path.startswith("/tile/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -495,7 +512,7 @@ async def get_tile(
             "X-Computation-Time": str(computation_time),
             "X-Image-Date": feature["properties"]["datetime"],
             "X-Cloud-Cover": str(feature["properties"]["eo:cloud_cover"]),
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
         }
         return Response(content=image_bytes, media_type="image/png", headers=headers)
 

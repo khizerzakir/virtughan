@@ -332,6 +332,7 @@ downloading = false;
                   opacity: 0.8,
                   resolution: 256,
                   zIndex: 5,
+                  caching: false,
                   // updateWhenZooming:true,
                   pixelValuesToColorFn: values => {
                       // var normalizedValue = (values[0] - min) / (max - min);

@@ -37,23 +37,19 @@ def save_geotiff(
     nodata: float = -9999,
     band_descriptions: list[str] | None = None,
 ) -> None:
-    # Replace NaNs with nodata marker and ensure dtype is compatible with common readers
     data = np.where(np.isnan(data), nodata, data)
-    # Some consumers (browser georaster parsers) don't handle Float64 well; downcast floats to Float32
-    if np.issubdtype(data.dtype, np.floating) and data.dtype.itemsize > 4:
-        data = data.astype(np.float32)
-        with rasterio.open(
-            output_path,
-            "w",
-            driver="GTiff",
-            height=data.shape[1],
-            width=data.shape[2],
-            count=data.shape[0],
-            dtype=data.dtype,
-            crs=crs,
-            transform=transform,
-            nodata=nodata,
-        ) as dst:
+    with rasterio.open(
+        output_path,
+        "w",
+        driver="GTiff",
+        height=data.shape[1],
+        width=data.shape[2],
+        count=data.shape[0],
+        dtype=data.dtype,
+        crs=crs,
+        transform=transform,
+        nodata=nodata,
+    ) as dst:
         for band_index in range(1, data.shape[0] + 1):
             dst.write(data[band_index - 1], band_index)
             if band_descriptions:
