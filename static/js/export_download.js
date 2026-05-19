@@ -4,6 +4,11 @@ downloading = false;
         //track button click google analytics
         trackExportButtonClick("visualizeAndExportButton");
 
+        const selectedExportSatellite = document.querySelector('input[name="select_satellite_export"]:checked');
+        export_params.collection = selectedExportSatellite && selectedExportSatellite.id === 'landsat_radio_export'
+          ? 'landsat-c2-l2'
+          : 'sentinel-2-l2a';
+
         completed_log = false;
         var analyzeChecked = document.getElementById("analyze-data").checked;
         var smartFilters = document.getElementById("smart-filters").checked;
@@ -78,7 +83,7 @@ downloading = false;
           }
           else{ // if aoi area is fine
         
-        var url_compute = `/export?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&formula=${encodeURIComponent(export_params.formula)}&band1=${encodeURIComponent(export_params.band1)}&band2=${encodeURIComponent(export_params.band2)}&timeseries=${encodeURIComponent(export_params.timeseries)}&smart_filters=${export_params.smart_filters}&collection=${encodeURIComponent(export_params.collection)}`;
+        var url_compute = `/export?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&formula=${encodeURIComponent(export_params.formula)}&band1=${encodeURIComponent(export_params.band1)}&band2=${encodeURIComponent(export_params.band2)}&timeseries=${encodeURIComponent(export_params.timeseries)}&smart_filters=${smartFilters}&collection=${encodeURIComponent(export_params.collection)}`;
 
         //if operation and timeseries should not be sent in url. 
         // var url_compute = `/export?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&formula=${encodeURIComponent(export_params.formula)}&band1=${encodeURIComponent(export_params.band1)}&band2=${encodeURIComponent(export_params.band2)}`;

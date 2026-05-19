@@ -64,6 +64,170 @@ document.addEventListener('DOMContentLoaded', function() {
 
   //leftbar tab end
 
+const COLLECTION_DEFAULTS = {
+  "sentinel-2-l2a": {
+    search: { band1: "visual", band2: "nir" },
+    export: { band1: "red", band2: "nir" },
+  },
+  "landsat-c2-l2": {
+    search: { band1: "red", band2: "nir08" },
+    export: { band1: "red", band2: "nir08" },
+  },
+};
+
+const COLLECTION_BANDS_FALLBACK = {
+  "sentinel-2-l2a": [
+    "red", "green", "blue", "nir", "swir22", "rededge2", "rededge3", "rededge1",
+    "swir16", "wvp", "nir08", "aot", "coastal", "nir09", "scl", "visual",
+  ],
+  "landsat-c2-l2": ["red", "green", "blue", "nir08", "swir16", "swir22", "coastal", "lwir11"],
+};
+
+const COLLECTION_LABELS = {
+  "sentinel-2-l2a": "Sentinel-2",
+  "landsat-c2-l2": "Landsat",
+};
+
+const COLLECTION_STATE = {
+  search: "sentinel-2-l2a",
+  export: "sentinel-2-l2a",
+};
+
+let collectionMetadata = {};
+
+function getBandNames(collection) {
+  const collectionBands = collectionMetadata?.[collection]?.bands;
+  if (collectionBands) {
+    return Object.keys(collectionBands);
+  }
+  return COLLECTION_BANDS_FALLBACK[collection] || COLLECTION_BANDS_FALLBACK["sentinel-2-l2a"];
+}
+
+function renderBandCheckboxes(collection) {
+  const container = document.getElementById("list_of_bands");
+  if (!container) {
+    return;
+  }
+
+  const bandNames = getBandNames(collection);
+  container.innerHTML = bandNames
+    .map((bandName) => {
+      const label = bandName.toUpperCase();
+      return `<label class="flex items-center px-3 py-2"><input type="checkbox" value="${label}" class="form-checkbox h-4 w-4 text-blue-600 band-checkbox"><span class="ml-2 text-gray-700 text-sm">${label}</span></label>`;
+    })
+    .join("");
+
+  container.querySelectorAll('.band-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', function () {
+      const selectedOptions = Array.from(container.querySelectorAll('.band-checkbox'))
+        .filter((chk) => chk.checked)
+        .map((chk) => chk.value);
+      const dropdownButton = document.getElementById('dropdownButtonBands');
+      if (dropdownButton) {
+        dropdownButton.innerHTML = selectedOptions.length > 0
+          ? selectedOptions.join(', ')
+          : `<img src="static/img/select-icon.png" alt="" class="size-5 shrink-0 rounded-full mr-2">Select Bands`;
+      }
+      if (export_params) {
+        export_params.bands_list = selectedOptions.length > 0 ? selectedOptions.join(',').toLowerCase() : "";
+      }
+    });
+  });
+}
+
+function populateBandSelectors(collection) {
+  const bandNames = getBandNames(collection);
+  const band1Select = document.getElementById('band1');
+  const band2Select = document.getElementById('band2');
+  if (!band1Select || !band2Select) {
+    return;
+  }
+
+  const optionMarkup = ['<option value="">Select Band</option>']
+    .concat(bandNames.map((bandName) => `<option value="${bandName.toUpperCase()}">${bandName.toUpperCase()}</option>`))
+    .join('');
+
+  band1Select.innerHTML = optionMarkup;
+  band2Select.innerHTML = optionMarkup;
+
+  const calculatorLabel = document.getElementById('calculator_bands');
+  if (calculatorLabel) {
+    calculatorLabel.textContent = `${COLLECTION_LABELS[collection] || collection} Bands`;
+  }
+}
+
+function applyCollectionDefaults(scope, collection) {
+  const defaults = COLLECTION_DEFAULTS[collection] || COLLECTION_DEFAULTS['sentinel-2-l2a'];
+  if (scope === 'search') {
+    tile_params.collection = collection;
+    tile_params.band1 = defaults.search.band1;
+    tile_params.band2 = defaults.search.band2;
+  } else {
+    export_params.collection = collection;
+    export_params.band1 = defaults.export.band1;
+    export_params.band2 = defaults.export.band2;
+    export_params.bands_list = '';
+    const dropdownButton = document.getElementById('dropdownButtonBands');
+    if (dropdownButton) {
+      dropdownButton.innerHTML = `<img src="static/img/select-icon.png" alt="" class="size-5 shrink-0 rounded-full mr-2">Select Bands`;
+    }
+    const bandList = document.getElementById('list_of_bands');
+    if (bandList) {
+      bandList.querySelectorAll('input.band-checkbox').forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    }
+  }
+
+  if (scope === 'export') {
+    populateBandSelectors(collection);
+    renderBandCheckboxes(collection);
+    const band1Select = document.getElementById('band1');
+    const band2Select = document.getElementById('band2');
+    if (band1Select) {
+      band1Select.value = export_params.band1.toUpperCase();
+    }
+    if (band2Select) {
+      band2Select.value = export_params.band2.toUpperCase();
+    }
+  }
+
+  if (scope === 'export' && typeof updateBandsBox === 'function') {
+    updateBandsBox();
+  }
+}
+
+async function loadCollectionMetadata() {
+  try {
+    const response = await fetch('/collections');
+    collectionMetadata = await response.json();
+  } catch (error) {
+    console.warn('Unable to load collection metadata, using fallback bands.', error);
+  }
+}
+
+function setCollectionByRadio(radio) {
+  const isSearch = radio.id.includes('_search');
+  const scope = isSearch ? 'search' : 'export';
+  const collection = radio.id.startsWith('landsat') ? 'landsat-c2-l2' : 'sentinel-2-l2a';
+  COLLECTION_STATE[scope] = collection;
+
+  applyCollectionDefaults(scope, collection);
+
+  const listSelector = isSearch ? '#select-list_search' : '#select-list_export';
+  const visualItems = document.querySelectorAll(`${listSelector} .template-filters`);
+  visualItems.forEach((item) => {
+    const valueNode = item.querySelector('.template-filters-value');
+    if (valueNode && valueNode.getAttribute('value') === 'visual') {
+      if (collection === 'landsat-c2-l2') {
+        item.classList.add('hidden');
+      } else {
+        item.classList.remove('hidden');
+      }
+    }
+  });
+}
+
 //band box change - advance filter (formula) start
 document.getElementById("band1").addEventListener("change", updateBandsBox);
 document.getElementById("band2").addEventListener("change", updateBandsBox);
@@ -72,11 +236,12 @@ function updateBandsBox() {
     const band1_v = document.getElementById("band1").value;
     const band2_v = document.getElementById("band2").value;
 
-    tile_params.band1 = band1_v.toLowerCase();
-    tile_params.band2 = band2_v.toLowerCase();
-
-    export_params.band1 = band1_v.toLowerCase(); //setting the same params for now.
-    export_params.band2 = band2_v.toLowerCase();
+    if (band1_v) {
+      export_params.band1 = band1_v.toLowerCase();
+    }
+    if (band2_v) {
+      export_params.band2 = band2_v.toLowerCase();
+    }
 
     const mappedBands = new Set();
 
@@ -100,6 +265,25 @@ function updateBandsBox() {
     // }
 }
 //band box change - advance filter (formula) end
+
+document.addEventListener('DOMContentLoaded', async function () {
+  await loadCollectionMetadata();
+
+  document.querySelectorAll('.radio-action-sat').forEach((radio) => {
+    radio.addEventListener('change', function () {
+      setCollectionByRadio(this);
+    });
+  });
+
+  const defaultSearchRadio = document.getElementById('sentinel2_radio_search');
+  const defaultExportRadio = document.getElementById('sentinel2_radio_export');
+  if (defaultSearchRadio) {
+    setCollectionByRadio(defaultSearchRadio);
+  }
+  if (defaultExportRadio) {
+    setCollectionByRadio(defaultExportRadio);
+  }
+});
 
 
 
@@ -249,16 +433,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if(templateText == "NDVI"){
           param.formula = "(band2 - band1) / (band2 + band1)";
           param.band1 = 'red';
-          param.band2 = 'nir';
+          param.band2 = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
         }
         else if(templateText == "NDWI"){
           param.formula = "(band2 - band1) / (band2 + band1)";
-          param.band1 = 'nir';
+          param.band1 = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
           param.band2 = 'green';
         }
         else if(templateText == "visual"){
           param.formula = "band1";
-          param.band1 = 'visual';
+          param.band1 = param.collection === 'landsat-c2-l2' ? 'red' : 'visual';
           param.band2 = '';
         }
         

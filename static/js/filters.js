@@ -121,7 +121,11 @@ function setDefaultFilters() {
   document.getElementById("search-button").classList.add('bg-gray-500', 'pointer-events-none');
   document.getElementById("search-button").classList.remove('bg-blue-700');
 
-  tile_params.collection = "sentinel-2-l2a";
+  const currentCollection = tile_params.collection || "sentinel-2-l2a";
+  tile_params.collection = currentCollection;
+  if (typeof applyCollectionDefaults === 'function') {
+    applyCollectionDefaults('search', currentCollection);
+  }
 }
 setDefaultFilters();
 
@@ -151,7 +155,11 @@ function setDefaultFiltersExport() {
 
   document.getElementById("operation_menu").value = "median";
 
-  export_params.collection = "sentinel-2-l2a";
+  const currentCollection = export_params.collection || "sentinel-2-l2a";
+  export_params.collection = currentCollection;
+  if (typeof applyCollectionDefaults === 'function') {
+    applyCollectionDefaults('export', currentCollection);
+  }
 }
 setDefaultFiltersExport();
 
