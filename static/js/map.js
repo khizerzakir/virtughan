@@ -233,6 +233,88 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
         document.getElementById("zoom-level").textContent = map.getZoom();
       });
 
+      function createPopup(feature){
+        var popupContent = `
+          <div class="popup-content max-h-72 overflow-y-auto custom-scrollbar p-2">
+            <div class="mb-2">
+              <strong class="text-base text-gray-800">${feature.id}</strong>
+            </div>
+            <div class="mb-2">
+              <strong class="text-xs text-gray-600">Date:</strong>
+              <span class="text-xs text-gray-500">${feature.properties.datetime}</span>
+            </div>
+            <div class="mb-2">
+              <strong class="text-xs text-gray-600">Cloud Cover:</strong>
+              <span class="text-xs text-gray-500">${feature.properties["eo:cloud_cover"]}</span>
+            </div>
+            <hr class="my-2">
+            <div class="mb-2">
+              <strong class="text-xs">Properties:</strong>
+              <div class="max-w-md overflow-x-auto custom-scrollbar">
+                <table class="min-w-full table-fixed divide-y divide-gray-200">
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    ${Object.entries(feature.properties).map(([key, value], index) =>
+                      `<tr class="${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
+                        <td class="w-1/3 px-2 py-1 text-xs text-gray-500 break-words">${key}</td>
+                        <td class="w-2/3 px-2 py-1 text-xs text-gray-900 break-words">${value}</td>
+                      </tr>`).join("")}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="download-section mt-2">
+              <h4 class="text-sm font-semibold">Download</h4>
+              <ul class="list-disc list-inside text-xs">
+                ${Object.entries(feature.assets).map(([key, asset]) =>
+                  `<li><a href="${asset.href}" target="_blank" class="text-indigo-600 hover:underline break-words">${asset.title}</a></li>`
+                ).join("")}
+              </ul>
+            </div>
+          </div>
+        `;
+        return popupContent;
+      }
+
+      function createLayer(feature){
+        var layerCreated = L.geoJSON(feature, {
+                style: function () {
+                  return {
+                    fillOpacity: 0.5,
+                    color: "yellow",
+                    weight: 2,
+                  };
+                },
+              });
+        return layerCreated;
+      }
+
+      document
+        .getElementById("search-button")
+        .addEventListener("click", function () {
+          trackLiveViewButtonClick("LiveViewButton");
+
+          document.getElementById("resultTab").click();
+          document.getElementById("layerSwitcherContainer").classList.remove("hidden");
+          document.getElementById("searchLayerSwitcher").classList.remove("hidden");
+          document.getElementById("searchBboxLayerSwitcher").classList.remove("hidden");
+          document.getElementById("feature-list").innerHTML = "";
+          startLoader('feature-list');
+          document.getElementById("search_layer").checked = true;
+
+          const selectedSearchSatellite = document.querySelector('input[name="select_satellite_search"]:checked');
+          tile_params.collection = selectedSearchSatellite && selectedSearchSatellite.id === 'landsat_radio_search'
+            ? 'landsat-c2-l2'
+            : 'sentinel-2-l2a';
+
+          const bounds = map.getBounds();
+          tile_params.bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+          tile_params.startDate = document.getElementById("start-date").value;
+          tile_params.endDate = document.getElementById("end-date").value;
+          tile_params.cloudCover = document.getElementById("cloud-cover").value;
+
+          loadTiles();
+        });
+
       function loadTiles(){
         if (liveLayer) {
           map.removeLayer(liveLayer);
@@ -245,7 +327,7 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
 
         var checkedTimeseriesSearch = document.getElementById("timeSeries_search").checked;
         var transparentTile = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2rjWQAAAAASUVORK5CYII=";
-        
+
         var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&band1=${encodeURIComponent(tile_params.band1)}&band2=${encodeURIComponent(tile_params.band2)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}`;
         if(checkedTimeseriesSearch){
           encodedUrl_tiles += `&operation=${encodeURIComponent(tile_params.operation)}`;
@@ -258,7 +340,6 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
             zIndex: 5,
             maxZoom: 22,
             maxNativeZoom:22,
-            errorTileUrl: transparentTile,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           }
@@ -274,163 +355,61 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
 
         showLoaderOnMap(liveLayer, false);
         liveLayer.addTo(map);
-      }
 
-      document
-        .getElementById("search-button")
-        .addEventListener("click", function () {
-          //track button click google analytics
-          trackLiveViewButtonClick("LiveViewButton");
+        fetch(
+          `/search?bbox=${tile_params.bbox}&start_date=${tile_params.startDate}&end_date=${tile_params.endDate}&cloud_cover=${tile_params.cloudCover}&collection=${encodeURIComponent(tile_params.collection)}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (geojsonLayer) {
+              map.removeLayer(geojsonLayer);
+            }
 
-          //goto next tab to show result
-          document.getElementById("resultTab").click();
-          document.getElementById("layerSwitcherContainer").classList.remove("hidden");
-          document.getElementById("searchLayerSwitcher").classList.remove("hidden");
-          document.getElementById("searchBboxLayerSwitcher").classList.remove("hidden");
-          document.getElementById("feature-list").innerHTML = '';
-          // startProgressComputation('search', null);
-          setActiveResultSource('search');
+            geojsonLayer = L.geoJSON(data, {
+              style: function (feature) {
+                return {
+                  fillOpacity: 0,
+                  color: "red",
+                  weight: 1,
+                };
+              },
+              onEachFeature: function (feature, layer) {
+                layer.on("click", function () {
+                  if (Object.keys(highlightedLayer._layers).length > 0) {
+                    highlightedLayer.clearLayers();
+                  }
+                  var clickedLayer = createLayer(feature);
+                  highlightedLayer.addLayer(clickedLayer);
+                  highlightedLayer.addTo(map);
+                  if(document.getElementById("search_bbox_layer").checked){
+                    map.fitBounds(geojsonLayer.getBounds());
+                  }
 
-          startLoader('feature-list');
-          document.getElementById("search_layer").checked = true;
+                  layer.bindPopup(createPopup(feature)).openPopup();
 
-          const selectedSearchSatellite = document.querySelector('input[name="select_satellite_search"]:checked');
-          tile_params.collection = selectedSearchSatellite && selectedSearchSatellite.id === 'landsat_radio_search'
-            ? 'landsat-c2-l2'
-            : 'sentinel-2-l2a';
-
-          var bounds = map.getBounds();
-          tile_params.bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-          tile_params.startDate = document.getElementById("start-date").value;
-          tile_params.endDate = document.getElementById("end-date").value;
-          tile_params.cloudCover = document.getElementById("cloud-cover").value;
-
-
-          function createPopup(feature){
-            var popupContent = `
-              <div class="popup-content max-h-72 overflow-y-auto custom-scrollbar p-2">
-                <div class="mb-2">
-                  <strong class="text-base text-gray-800">${feature.id}</strong>
-                </div>
-                <div class="mb-2">
-                  <strong class="text-xs text-gray-600">Date:</strong>
-                  <span class="text-xs text-gray-500">${feature.properties.datetime}</span>
-                </div>
-                <div class="mb-2">
-                  <strong class="text-xs text-gray-600">Cloud Cover:</strong>
-                  <span class="text-xs text-gray-500">${feature.properties["eo:cloud_cover"]}</span>
-                </div>
-                <hr class="my-2">
-                <div class="mb-2">
-                  <strong class="text-xs">Properties:</strong>
-                  <div class="max-w-md overflow-x-auto custom-scrollbar">
-                    <table class="min-w-full table-fixed divide-y divide-gray-200">
-                      <!--<thead class="bg-gray-50">
-                        <tr>
-                          <th scope="col" class="w-1/3 px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
-                          <th scope="col" class="w-2/3 px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                        </tr>
-                      </thead>-->
-                      <tbody class="bg-white divide-y divide-gray-200">
-                        ${Object.entries(feature.properties).map(([key, value], index) =>
-                          `<tr class="${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
-                            <td class="w-1/3 px-2 py-1 text-xs text-gray-500 break-words">${key}</td>
-                            <td class="w-2/3 px-2 py-1 text-xs text-gray-900 break-words">${value}</td>
-                          </tr>`).join("")}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div class="download-section mt-2">
-                  <h4 class="text-sm font-semibold">Download</h4>
-                  <ul class="list-disc list-inside text-xs">
-                    ${Object.entries(feature.assets).map(([key, asset]) =>
-                      `<li><a href="${asset.href}" target="_blank" class="text-indigo-600 hover:underline break-words">${asset.title}</a></li>`
-                    ).join("")}
-                  </ul>
-                </div>
-              </div>
-            `;
-            return popupContent;
-          }
-
-
-          function createLayer(feature){
-            var layerCreated = L.geoJSON(feature, {
-                    style: function () {
-                      return {
-                        fillOpacity: 0.5,
-                        color: "yellow",
-                        weight: 2,
-                      };
-                    },
-                  });
-            return layerCreated;
-          }
-
-          fetch(
-            `/search?bbox=${tile_params.bbox}&start_date=${tile_params.startDate}&end_date=${tile_params.endDate}&cloud_cover=${tile_params.cloudCover}&collection=${encodeURIComponent(tile_params.collection)}`
-          )
-            .then((response) => response.json())
-            .then((data) => {
-              if (geojsonLayer) {
-                map.removeLayer(geojsonLayer);
-              }
-
-              geojsonLayer = L.geoJSON(data, {
-                style: function (feature) {
-                  return {
-                    fillOpacity: 0,
-                    color: "red",
-                    weight: 1,
-                  };
-                },
-                onEachFeature: function (feature, layer) {
-                  layer.on("click", function () {
-                    if (Object.keys(highlightedLayer._layers).length > 0) {
-                      // map.removeLayer(highlightedLayer);
-                      highlightedLayer.clearLayers();
-                      
-                    }
-                    var clickedLayer = createLayer(feature);
-                    highlightedLayer.addLayer(clickedLayer);
-                    highlightedLayer.addTo(map);
-                    // map.fitBounds(clickedLayer.getBounds());
-                    if(document.getElementById("search_bbox_layer").checked){
-                      map.fitBounds(geojsonLayer.getBounds());
-                    }
-                    
-                    
-                    layer.bindPopup(createPopup(feature)/*, { keepInView: true }*/).openPopup();
-
-                    // Add event listener for download section toggle
-                    document
-                      .querySelector(".download-section h4")
-                      .addEventListener("click", function () {
-                        var ul = this.nextElementSibling;
-                        ul.style.display =
-                          ul.style.display === "none" ? "block" : "none";
-                      });
-                  });
-                },
-              });
-              if(document.getElementById("search_bbox_layer").checked){
-                geojsonLayer.addTo(map);
-                initializeTransparency();
-              }
-
-              setResultSource('search', {
-                kind: 'scenes',
-                items: data.features,
-              });
-              stopLoader('feature-list');
-
-              document.getElementById("sidebar").style.display = "block";
-
-             
-                loadTiles();
-
-                initializeTransparency();
-              
+                  document
+                    .querySelector(".download-section h4")
+                    .addEventListener("click", function () {
+                      var ul = this.nextElementSibling;
+                      ul.style.display =
+                        ul.style.display === "none" ? "block" : "none";
+                    });
+                });
+              },
             });
-        });
+
+            if(document.getElementById("search_bbox_layer").checked){
+              geojsonLayer.addTo(map);
+              initializeTransparency();
+            }
+
+            setResultSource('search', {
+              kind: 'scenes',
+              items: data.features,
+            });
+            stopLoader('feature-list');
+
+            document.getElementById("sidebar").style.display = "block";
+            initializeTransparency();
+          });
+      }

@@ -53,7 +53,7 @@ function renderSceneList(items) {
       const cloudCoverLabel = cloudCover === undefined ? "N/A" : `${parseInt(cloudCover, 10)} %`;
       return `
         <ul role="list" class="divide-y divide-gray-100">
-          <li id="result_list_${index}" data-result-index="${index}" class="result-list-items flex flex-col gap-2 rounded-md py-4 px-2 hover:bg-gray-100 transition-colors duration-300 cursor-pointer">
+          <li id="result_list_${index}" data-result-index="${index}" class="result-list-items flex justify-between gap-x-6 py-5 hover:bg-gray-100 transition-colors duration-300 cursor-pointer">
             <div class="flex min-w-0 items-start gap-x-4">
               <img class="size-12 flex-none rounded-full bg-gray-50" src="static/img/satellite-basemap.png" alt="">
               <div class="min-w-0 flex-auto">
@@ -61,9 +61,8 @@ function renderSceneList(items) {
                 <p class="mt-1 truncate text-xs/5 text-gray-500">${escapeHtml(datetime)}</p>
               </div>
             </div>
-            <div class="flex items-center justify-between text-xs text-gray-500 pl-16">
-              <span class="flex items-center gap-1"><i class="fa-solid fa-cloud"></i> ${escapeHtml(cloudCoverLabel)}</span>
-              <span class="text-gray-400">Tap to highlight footprint</span>
+            <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+              <p class="mt-auto text-xs/5 text-gray-400"><i class="fa-solid fa-cloud"></i> ${escapeHtml(cloudCoverLabel)}</p>
             </div>
           </li>
         </ul>
@@ -103,21 +102,14 @@ function wireSceneResultInteractions(items) {
       hoveredLayer.bindPopup(createPopup(feature));
       highlightedLayer.addTo(map);
       if (document.getElementById("search_bbox_layer")?.checked) {
-        map.fitBounds(hoveredLayer.getBounds());
+        map.fitBounds(geojsonLayer.getBounds());
       }
       clickedResultList = false;
     });
 
     element.addEventListener("click", function () {
-      const clickedLayer = createLayer(feature);
-      highlightedLayer.clearLayers();
-      highlightedLayer.addLayer(clickedLayer);
-      highlightedLayer.addTo(map);
-      if (document.getElementById("search_bbox_layer")?.checked) {
-        map.fitBounds(clickedLayer.getBounds());
-      }
-      if (clickedLayer.getLayers()[0]) {
-        clickedLayer.getLayers()[0].bindPopup(createPopup(feature)).openPopup();
+      if (highlightedLayer.getLayers()[0]) {
+        highlightedLayer.getLayers()[0].openPopup();
         clickedResultList = true;
       }
     });

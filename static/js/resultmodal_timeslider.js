@@ -6,6 +6,9 @@ function checkImageLoaded(imageId, loaderContainer) {
   img.addEventListener('load', () => {
     console.log('Image has loaded.');
     stopLoader(loaderContainer);
+        if (typeof img.dataset.onLoadCallback === 'string' && img.dataset.onLoadCallback && typeof window[img.dataset.onLoadCallback] === 'function') {
+            window[img.dataset.onLoadCallback]();
+        }
   });
 
   // Optional: Event listener for when there's an error loading the image
@@ -17,6 +20,10 @@ function checkImageLoaded(imageId, loaderContainer) {
   // Check if the image is already loaded (e.g., from cache)
   if (img.complete && img.naturalHeight !== 0) {
     console.log('Image has already been loaded.');
+        stopLoader(loaderContainer);
+        if (typeof img.dataset.onLoadCallback === 'string' && img.dataset.onLoadCallback && typeof window[img.dataset.onLoadCallback] === 'function') {
+            window[img.dataset.onLoadCallback]();
+        }
     
   }
 }
@@ -75,22 +82,24 @@ document.addEventListener('DOMContentLoaded', (event) => {
       document.getElementById("operationTabButton").click();
 
       const uid = localStorage.getItem('UID');
+      const timeSliderModal = document.getElementById('timeSliderModal');
       
       if (operationChecked && !timeSeriesChecked) {
-          startLoader("operationContainer");
+          startLoader("imageContainer");
           // Display single image for operation
           document.getElementById('operationContainer').classList.remove('hidden');
           document.getElementById('timeSeriesContainer').classList.add('hidden');
           document.getElementById('timeSeriesTrendContainer').classList.add('hidden');
           document.getElementById('tabs').classList.add('hidden');
+          timeSliderModal.classList.add('hidden');
           document.getElementById('operationImageView').src = 'static/export/'+uid+'/custom_band_output_aggregate_colormap.png';
           document.getElementById('operationDateDisplay').textContent = '';
-          document.getElementById('timeSliderModal').classList.remove('hidden');
           
-          checkImageLoaded("operationImageView", "operationContainer"); //remove loader after image is loaded.
+          document.getElementById('operationImageView').dataset.onLoadCallback = 'showOperationResultModal';
+          checkImageLoaded("operationImageView", "imageContainer"); //remove loader after image is loaded.
 
       } else if (timeSeriesChecked && !operationChecked) {
-          startLoader("timeSeriesContainer");
+          startLoader("timeSeriesImageContainer");
           startLoader("trendImageContainer");
           // Display time series
           document.getElementById('operationContainer').classList.add('hidden');
@@ -98,7 +107,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
           document.getElementById('timeSeriesTrendContainer').classList.remove('hidden');
           document.getElementById('tabs').classList.remove('hidden');
           document.getElementById('operationTabButton').classList.add('hidden');
-          document.getElementById('timeSliderModal').classList.remove('hidden');
+          timeSliderModal.classList.add('hidden');
           document.getElementById('trendImageView').src = 'static/export/'+uid+'/values_over_time.png';
 
           // Fetch data
@@ -116,7 +125,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                           document.getElementById('dateDisplay').textContent = new Date(dates[0]).toLocaleDateString();
                           // changeImage();
                       }
-                      stopLoader("timeSeriesContainer");
+                      stopLoader("timeSeriesImageContainer");
+                      timeSliderModal.classList.remove('hidden');
                   });
               })
               .catch((error) => {
@@ -127,15 +137,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
 
       } else if (operationChecked && timeSeriesChecked) {
-          startLoader("operationContainer");
-          startLoader("timeSeriesContainer");
+          startLoader("imageContainer");
+          startLoader("timeSeriesImageContainer");
           startLoader("trendImageContainer");
           // Show tabs for both operation and time series
           document.getElementById('tabs').classList.remove('hidden');
           document.getElementById('operationContainer').classList.remove('hidden');
           document.getElementById('timeSeriesContainer').classList.add('hidden');
           document.getElementById('timeSeriesTrendContainer').classList.add('hidden');
-          document.getElementById('timeSliderModal').classList.remove('hidden');
+          timeSliderModal.classList.add('hidden');
           // Load operation image initially
           document.getElementById('operationImageView').src = 'static/export/'+uid+'/custom_band_output_aggregate_colormap.png';
           document.getElementById('operationDateDisplay').textContent = '';
@@ -157,18 +167,24 @@ document.addEventListener('DOMContentLoaded', (event) => {
                           document.getElementById('dateDisplay').textContent = new Date(dates[0]).toLocaleDateString();
                           // changeImage();
                       }
-                      stopLoader("timeSeriesContainer");
+                      stopLoader("timeSeriesImageContainer");
+                      timeSliderModal.classList.remove('hidden');
                   });
               })
               .catch((error) => {
                   console.error('Error:', error);
               });
         
-          checkImageLoaded("operationImageView", "operationContainer");
+          document.getElementById('operationImageView').dataset.onLoadCallback = 'showOperationResultModal';
+          checkImageLoaded("operationImageView", "imageContainer");
           checkImageLoaded("trendImageView", "trendImageContainer");  
       }
       
   }
+
+    window.showOperationResultModal = function () {
+        document.getElementById('timeSliderModal').classList.remove('hidden');
+    };
 
   // Function to switch tabs
   function switchTab(tab) {
