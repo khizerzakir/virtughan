@@ -238,7 +238,13 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
           map.removeLayer(liveLayer);
         }
 
+        const selectedSearchSatellite = document.querySelector('input[name="select_satellite_search"]:checked');
+        tile_params.collection = selectedSearchSatellite && selectedSearchSatellite.id === 'landsat_radio_search'
+          ? 'landsat-c2-l2'
+          : 'sentinel-2-l2a';
+
         var checkedTimeseriesSearch = document.getElementById("timeSeries_search").checked;
+        var transparentTile = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2rjWQAAAAASUVORK5CYII=";
         
         var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&band1=${encodeURIComponent(tile_params.band1)}&band2=${encodeURIComponent(tile_params.band2)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}`;
         if(checkedTimeseriesSearch){
@@ -252,10 +258,19 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
             zIndex: 5,
             maxZoom: 22,
             maxNativeZoom:22,
+            errorTileUrl: transparentTile,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           }
         );
+
+        var tileErrorShown = false;
+        liveLayer.on('tileerror', function () {
+          if (!tileErrorShown) {
+            tileErrorShown = true;
+            showMessage('warning', 8000, 'Some tiles failed to load from the server. The map shows a blank fallback tile instead of a broken image.');
+          }
+        });
 
         showLoaderOnMap(liveLayer, false);
         liveLayer.addTo(map);
@@ -277,6 +292,11 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
 
           startLoader('feature-list');
           document.getElementById("search_layer").checked = true;
+
+          const selectedSearchSatellite = document.querySelector('input[name="select_satellite_search"]:checked');
+          tile_params.collection = selectedSearchSatellite && selectedSearchSatellite.id === 'landsat_radio_search'
+            ? 'landsat-c2-l2'
+            : 'sentinel-2-l2a';
 
           var bounds = map.getBounds();
           tile_params.bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
