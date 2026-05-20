@@ -182,12 +182,8 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
       var liveLayer;
       var computeLayer;
       var highlightedLayer = L.layerGroup();
-      var resultBboxLayers = {
-        search: null,
-        analyze: null,
-        download: null,
-      };
-      var activeResultBboxSource = null;
+      var activeImagesBboxLayer = null;
+      var activeImagesBboxSource = null;
       var clickedResultList = false;
       var previousListMouseIn;
       var export_params_bbox_changed = false;
@@ -252,19 +248,23 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
       }
 
       function clearResultBboxLayers() {
-        Object.values(resultBboxLayers).forEach((layer) => {
-          if (layer && map.hasLayer(layer)) {
-            map.removeLayer(layer);
-          }
-        });
-        resultBboxLayers.search = null;
-        resultBboxLayers.analyze = null;
-        resultBboxLayers.download = null;
-        activeResultBboxSource = null;
+        if (activeImagesBboxLayer && map.hasLayer(activeImagesBboxLayer)) {
+          map.removeLayer(activeImagesBboxLayer);
+        }
+        activeImagesBboxLayer = null;
+        activeImagesBboxSource = null;
         if (highlightedLayer) {
           highlightedLayer.clearLayers();
         }
         map.closePopup();
+      }
+
+      function clearImagesBboxLayer() {
+        if (activeImagesBboxLayer && map.hasLayer(activeImagesBboxLayer)) {
+          map.removeLayer(activeImagesBboxLayer);
+        }
+        activeImagesBboxLayer = null;
+        activeImagesBboxSource = null;
       }
 
       function buildSourceBboxLayer(source, payload) {
@@ -319,35 +319,19 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
           return;
         }
 
-        if (source === "search" && !document.getElementById("search_bbox_layer")?.checked) {
-          const searchLayer = resultBboxLayers.search;
-          if (searchLayer && map.hasLayer(searchLayer)) {
-            map.removeLayer(searchLayer);
-          }
-          resultBboxLayers.search = null;
-          if (activeResultBboxSource === "search") {
-            activeResultBboxSource = null;
-          }
+        const bboxEnabled = document.getElementById("search_bbox_layer")?.checked;
+        activeImagesBboxSource = source;
+
+        if (!bboxEnabled) {
+          clearImagesBboxLayer();
           return;
         }
 
-        activeResultBboxSource = source;
-        const previousLayer = resultBboxLayers[source];
-        if (previousLayer && map.hasLayer(previousLayer)) {
-          map.removeLayer(previousLayer);
-        }
-        Object.keys(resultBboxLayers).forEach((key) => {
-          if (key === source) {
-            return;
-          }
-          const layer = resultBboxLayers[key];
-          if (layer && map.hasLayer(layer)) {
-            map.removeLayer(layer);
-          }
-        });
-
         const nextLayer = buildSourceBboxLayer(source, payload);
-        resultBboxLayers[source] = nextLayer;
+        if (activeImagesBboxLayer && map.hasLayer(activeImagesBboxLayer)) {
+          map.removeLayer(activeImagesBboxLayer);
+        }
+        activeImagesBboxLayer = nextLayer;
 
         if (nextLayer) {
           nextLayer.addTo(map);
@@ -363,6 +347,7 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
 
       window.syncResultBboxLayers = syncResultBboxLayers;
       window.clearResultBboxLayers = clearResultBboxLayers;
+      window.clearImagesBboxLayer = clearImagesBboxLayer;
 
       function createPopup(feature){
         var popupContent = `

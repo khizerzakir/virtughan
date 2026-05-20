@@ -22,6 +22,20 @@ function getResultSourceLabel(source) {
   return "None";
 }
 
+function getImagesBboxLabel(source) {
+  if (source === "search") return "Images Bbox Search";
+  if (source === "analyze") return "Images Bbox Analyze";
+  if (source === "download") return "Images Bbox Download";
+  return "Images Bbox";
+}
+
+function updateImagesBboxLabel(source) {
+  const label = document.getElementById("images_bbox_label");
+  if (label) {
+    label.textContent = getImagesBboxLabel(source);
+  }
+}
+
 function getResultContainer() {
   return document.getElementById("feature-list");
 }
@@ -160,6 +174,7 @@ function renderResultPayload(source, payload) {
     if (activeLabel) {
       activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
     }
+    updateImagesBboxLabel(source);
     if (typeof clearResultBboxLayers === "function") {
       clearResultBboxLayers();
     }
@@ -172,6 +187,7 @@ function renderResultPayload(source, payload) {
   if (activeLabel) {
     activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
   }
+  updateImagesBboxLabel(source);
   if (payload.kind !== "files") {
     wireSceneResultInteractions(items, source);
   }
@@ -233,6 +249,7 @@ function clearResultSources() {
   if (activeLabel) {
     activeLabel.textContent = 'Active result: None';
   }
+  updateImagesBboxLabel(null);
   if (switcher) {
     switcher.value = 'search';
   }
@@ -258,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.setResultSource = setResultSource;
 window.setActiveResultSource = setActiveResultSource;
+window.refreshActiveResult = refreshActiveResult;
 window.clearResultSources = clearResultSources;
 window.refreshActiveResult = refreshActiveResult;
 

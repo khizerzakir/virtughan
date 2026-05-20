@@ -14,10 +14,14 @@
       }
       else if(layerId=="search_bbox_layer"){
         if(checkedStatus){
-            map.addLayer(geojsonLayer);
+            if (typeof refreshActiveResult === "function") {
+              refreshActiveResult();
+            }
           }
           else{
-            map.removeLayer(geojsonLayer);
+            if (typeof clearImagesBboxLayer === "function") {
+              clearImagesBboxLayer();
+            }
           }
       }
       else if(layerId == "compute_layer"){
