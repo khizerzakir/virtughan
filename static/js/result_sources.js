@@ -71,7 +71,7 @@ function renderSceneList(items) {
     .join("");
 }
 
-function wireSceneResultInteractions(items) {
+function wireSceneResultInteractions(items, source) {
   const listItems = document.querySelectorAll(".result-list-items");
   listItems.forEach((element, index) => {
     const feature = items[index];
@@ -101,9 +101,6 @@ function wireSceneResultInteractions(items) {
       highlightedLayer.addLayer(hoveredLayer);
       hoveredLayer.bindPopup(createPopup(feature));
       highlightedLayer.addTo(map);
-      if (document.getElementById("search_bbox_layer")?.checked) {
-        map.fitBounds(geojsonLayer.getBounds());
-      }
       clickedResultList = false;
     });
 
@@ -163,6 +160,9 @@ function renderResultPayload(source, payload) {
     if (activeLabel) {
       activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
     }
+    if (typeof clearResultBboxLayers === "function") {
+      clearResultBboxLayers();
+    }
     return;
   }
 
@@ -173,7 +173,10 @@ function renderResultPayload(source, payload) {
     activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
   }
   if (payload.kind !== "files") {
-    wireSceneResultInteractions(items);
+    wireSceneResultInteractions(items, source);
+  }
+  if (typeof syncResultBboxLayers === "function") {
+    syncResultBboxLayers(source, payload);
   }
 }
 
@@ -200,12 +203,16 @@ function setResultSource(source, payload) {
     return;
   }
   resultSourceState[source] = payload;
-  activeResultSource = source;
-  const switcher = getResultSwitcher();
-  if (switcher) {
-    switcher.value = source;
+  if (!activeResultSource) {
+    activeResultSource = source;
   }
-  renderResultPayload(source, payload);
+  if (activeResultSource === source) {
+    const switcher = getResultSwitcher();
+    if (switcher) {
+      switcher.value = source;
+    }
+    renderResultPayload(source, payload);
+  }
 }
 
 function clearResultSources() {
@@ -229,6 +236,9 @@ function clearResultSources() {
   if (switcher) {
     switcher.value = 'search';
   }
+  if (typeof clearResultBboxLayers === "function") {
+    clearResultBboxLayers();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -250,3 +260,22 @@ window.setResultSource = setResultSource;
 window.setActiveResultSource = setActiveResultSource;
 window.clearResultSources = clearResultSources;
 window.refreshActiveResult = refreshActiveResult;
+
+function buildSearchRequestUrl(params) {
+  const bbox = encodeURIComponent(params.bbox || "");
+  const startDate = encodeURIComponent(params.startDate || "");
+  const endDate = encodeURIComponent(params.endDate || "");
+  const cloudCover = encodeURIComponent(params.cloudCover ?? "30");
+  const collection = encodeURIComponent(params.collection || "sentinel-2-l2a");
+  return `/search?bbox=${bbox}&start_date=${startDate}&end_date=${endDate}&cloud_cover=${cloudCover}&collection=${collection}`;
+}
+
+function fetchSearchResults(params) {
+  const requestUrl = buildSearchRequestUrl(params);
+  return fetch(requestUrl, { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => (data && Array.isArray(data.features) ? data.features : []));
+}
+
+window.buildSearchRequestUrl = buildSearchRequestUrl;
+window.fetchSearchResults = fetchSearchResults;

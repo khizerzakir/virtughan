@@ -392,12 +392,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // console.log("fired");
             // coords.classList.add('hidden');
             drawBBoxOption.classList.remove('hidden');
-            // console.log(Object.keys(highlightedLayer._layers).length > 0);
-            if(Object.keys(drawnItems._layers).length > 0){
-              // console.log(drawnItems);
-              updateDrawnItemBbox(drawnItems);
+            if (drawnItems) {
+              drawnItems.clearLayers();
               map.addLayer(drawnItems);
             }
+            if (rectangle) {
+              map.removeLayer(rectangle);
+              rectangle = null;
+            }
+            export_params_bbox_changed = false;
+            export_params.bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+            document.getElementById("map-window-content").innerHTML = export_params.bbox;
           } else if (selectedItemId === 'upload-file-bbox') {
             coords.classList.add('hidden');
             uploadBBoxFileOption.classList.remove('hidden');

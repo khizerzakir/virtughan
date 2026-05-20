@@ -112,73 +112,46 @@ downloading = false;
         }
 
         const activeExportResultSource = analyzeChecked ? 'analyze' : 'download';
+        setActiveResultSource(activeExportResultSource);
 
-        function prefetchSearchResultsForResultPanel() {
-          const searchUrl = `/search?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&collection=${encodeURIComponent(export_params.collection)}`;
+        const searchRequestParams = {
+          bbox: export_params.bbox,
+          startDate: export_params.startDdate,
+          endDate: export_params.endDate,
+          cloudCover: export_params.cloudCover,
+          collection: export_params.collection,
+        };
 
-          fetch(searchUrl, {
-            method: 'GET'
-          })
-            .then(response => response.json())
-            .then(data => {
-              if (data && Array.isArray(data.features)) {
-                setResultSource('search', {
-                  kind: 'scenes',
-                  items: data.features,
-                });
-              }
-            })
-            .catch((error) => {
-              console.error('Error fetching search results for result panel:', error);
+        const searchPromise = fetchSearchResults(searchRequestParams)
+          .then((features) => {
+            setResultSource(activeExportResultSource, {
+              kind: 'scenes',
+              items: features,
+              bbox: export_params.bbox,
             });
-        }
-
-        function loadExportOutputs(uid, sourceName) {
-          fetch(`/list-files?uid=${uid}`, {
-            method: 'GET'
           })
-            .then(response => response.json())
-            .then(files => {
-              const allowedExtensions = sourceName === 'analyze'
-                ? ['png', 'tif', 'tiff', 'jpg', 'jpeg']
-                : ['png', 'tif', 'tiff', 'jpg', 'jpeg', 'zip'];
+          .catch((error) => {
+            console.error('Error fetching search results for result panel:', error);
+          });
 
-              const items = Object.entries(files)
-                .filter(([name]) => {
-                  const extension = (name.split('.').pop() || '').toLowerCase();
-                  return extension && allowedExtensions.includes(extension) && name !== 'runtime.log';
-                })
-                .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
-                .map(([name, size]) => ({ name, size }));
-
-              setResultSource(sourceName, {
-                kind: 'files',
-                items,
-              });
-            })
-            .catch((error) => {
-              console.error('Error fetching export outputs for result panel:', error);
-            });
-        }
-
-        prefetchSearchResultsForResultPanel();
-
-        fetch(url, { 
-          method: 'GET' 
-        }) 
-        .then(response => response.json()) 
-        .then(data => {
-          console.log('Success:', data);
-
-          // Store the UID in localStorage
-          if (data.uid) {
-            localStorage.setItem('UID', data.uid);
-          }
-
+        const exportPromise = fetch(url, {
+          method: 'GET'
         })
-        .catch((error) => {
-          console.error('Error:', error);
-        });
+          .then((response) => response.json())
+          .then((data) => {
+            console.log('Success:', data);
+
+            if (data.uid) {
+              localStorage.setItem('UID', data.uid);
+            }
+
+            return data;
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+
+        Promise.allSettled([searchPromise, exportPromise]);
         
         //Open Result Tab
         document.getElementById("resultTab").click();
@@ -220,8 +193,6 @@ downloading = false;
                       document.getElementById("download-complete").classList.remove("hidden");
                     }
 
-                        loadExportOutputs(uid, activeExportResultSource);
-                
                   }  
                 }  
               }

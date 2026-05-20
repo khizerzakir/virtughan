@@ -45,6 +45,9 @@ document.getElementById('draw-point').addEventListener('click', function () {
     if(rectangle){
       map.removeLayer(rectangle);
     }
+    if (typeof clearResultBboxLayers === 'function') {
+      clearResultBboxLayers();
+    }
     drawHandlers.point.enable();
     drawHandlers.polygon.disable();
     drawHandlers.rectangle.disable();
@@ -55,6 +58,9 @@ document.getElementById('draw-polygon').addEventListener('click', function () {
     if(rectangle){
       map.removeLayer(rectangle);
     }
+    if (typeof clearResultBboxLayers === 'function') {
+      clearResultBboxLayers();
+    }
     drawHandlers.point.disable();
     drawHandlers.polygon.enable();
     drawHandlers.rectangle.disable();
@@ -64,6 +70,9 @@ document.getElementById('draw-rectangle').addEventListener('click', function () 
     drawnItems.clearLayers();
     if(rectangle){
       map.removeLayer(rectangle);
+    }
+    if (typeof clearResultBboxLayers === 'function') {
+      clearResultBboxLayers();
     }
     drawHandlers.point.disable();
     drawHandlers.polygon.disable();
@@ -132,6 +141,9 @@ map.on(L.Draw.Event.CREATED, function (event) {
     drawnItems.clearLayers();
     if(rectangle){
       map.removeLayer(rectangle);
+    }
+    if (typeof clearResultBboxLayers === 'function') {
+      clearResultBboxLayers();
     }
     var layer = event.layer;
     drawnItems.addLayer(layer);

@@ -182,6 +182,12 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
       var liveLayer;
       var computeLayer;
       var highlightedLayer = L.layerGroup();
+      var resultBboxLayers = {
+        search: null,
+        analyze: null,
+        download: null,
+      };
+      var activeResultBboxSource = null;
       var clickedResultList = false;
       var previousListMouseIn;
       var export_params_bbox_changed = false;
@@ -232,6 +238,131 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
         if(export_params_bbox_changed){}else{document.getElementById("map-window-content").innerHTML = export_params.bbox;}
         document.getElementById("zoom-level").textContent = map.getZoom();
       });
+
+      function parseBboxString(bboxValue) {
+        if (!bboxValue || typeof bboxValue !== "string") {
+          return null;
+        }
+        const parts = bboxValue.split(",").map((value) => Number(value));
+        if (parts.length !== 4 || parts.some((value) => Number.isNaN(value))) {
+          return null;
+        }
+        const [west, south, east, north] = parts;
+        return [[south, west], [north, east]];
+      }
+
+      function clearResultBboxLayers() {
+        Object.values(resultBboxLayers).forEach((layer) => {
+          if (layer && map.hasLayer(layer)) {
+            map.removeLayer(layer);
+          }
+        });
+        resultBboxLayers.search = null;
+        resultBboxLayers.analyze = null;
+        resultBboxLayers.download = null;
+        activeResultBboxSource = null;
+        if (highlightedLayer) {
+          highlightedLayer.clearLayers();
+        }
+        map.closePopup();
+      }
+
+      function buildSourceBboxLayer(source, payload) {
+        if (source === "search") {
+          return geojsonLayer || null;
+        }
+
+        // For analyze and download, build a geojsonLayer from the image features
+        // returned by the /search API (same as search does), not from the AOI bbox.
+        const items = payload?.items || [];
+        if (items.length === 0) {
+          return null;
+        }
+
+        const data = {
+          type: "FeatureCollection",
+          features: items,
+        };
+
+        return L.geoJSON(data, {
+          style: function (feature) {
+            return {
+              fillOpacity: 0,
+              color: source === "analyze" ? "#f59e0b" : source === "download" ? "#3b82f6" : "red",
+              weight: 1,
+            };
+          },
+          onEachFeature: function (feature, layer) {
+            layer.on("click", function () {
+              if (Object.keys(highlightedLayer._layers).length > 0) {
+                highlightedLayer.clearLayers();
+              }
+              var clickedLayer = createLayer(feature);
+              highlightedLayer.addLayer(clickedLayer);
+              highlightedLayer.addTo(map);
+              layer.bindPopup(createPopup(feature)).openPopup();
+              document
+                .querySelector(".download-section h4")
+                .addEventListener("click", function () {
+                  var ul = this.nextElementSibling;
+                  ul.style.display =
+                    ul.style.display === "none" ? "block" : "none";
+                });
+            });
+          },
+        });
+      }
+
+      function syncResultBboxLayers(source, payload) {
+        if (!source) {
+          clearResultBboxLayers();
+          return;
+        }
+
+        if (source === "search" && !document.getElementById("search_bbox_layer")?.checked) {
+          const searchLayer = resultBboxLayers.search;
+          if (searchLayer && map.hasLayer(searchLayer)) {
+            map.removeLayer(searchLayer);
+          }
+          resultBboxLayers.search = null;
+          if (activeResultBboxSource === "search") {
+            activeResultBboxSource = null;
+          }
+          return;
+        }
+
+        activeResultBboxSource = source;
+        const previousLayer = resultBboxLayers[source];
+        if (previousLayer && map.hasLayer(previousLayer)) {
+          map.removeLayer(previousLayer);
+        }
+        Object.keys(resultBboxLayers).forEach((key) => {
+          if (key === source) {
+            return;
+          }
+          const layer = resultBboxLayers[key];
+          if (layer && map.hasLayer(layer)) {
+            map.removeLayer(layer);
+          }
+        });
+
+        const nextLayer = buildSourceBboxLayer(source, payload);
+        resultBboxLayers[source] = nextLayer;
+
+        if (nextLayer) {
+          nextLayer.addTo(map);
+          if (source === "search" && typeof initializeTransparency === "function") {
+            initializeTransparency();
+          }
+        }
+
+        if (source !== "search" && geojsonLayer && map.hasLayer(geojsonLayer)) {
+          map.removeLayer(geojsonLayer);
+        }
+      }
+
+      window.syncResultBboxLayers = syncResultBboxLayers;
+      window.clearResultBboxLayers = clearResultBboxLayers;
 
       function createPopup(feature){
         var popupContent = `
@@ -356,14 +487,22 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
         showLoaderOnMap(liveLayer, false);
         liveLayer.addTo(map);
 
-        fetch(
-          `/search?bbox=${tile_params.bbox}&start_date=${tile_params.startDate}&end_date=${tile_params.endDate}&cloud_cover=${tile_params.cloudCover}&collection=${encodeURIComponent(tile_params.collection)}`
-        )
-          .then((response) => response.json())
-          .then((data) => {
+        fetchSearchResults({
+          bbox: tile_params.bbox,
+          startDate: tile_params.startDate,
+          endDate: tile_params.endDate,
+          cloudCover: tile_params.cloudCover,
+          collection: tile_params.collection,
+        })
+          .then((features) => {
             if (geojsonLayer) {
               map.removeLayer(geojsonLayer);
             }
+
+            const data = {
+              type: "FeatureCollection",
+              features,
+            };
 
             geojsonLayer = L.geoJSON(data, {
               style: function (feature) {
@@ -398,18 +537,16 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
               },
             });
 
-            if(document.getElementById("search_bbox_layer").checked){
-              geojsonLayer.addTo(map);
-              initializeTransparency();
-            }
-
             setResultSource('search', {
               kind: 'scenes',
-              items: data.features,
+              items: features,
+              bbox: tile_params.bbox,
             });
             stopLoader('feature-list');
 
             document.getElementById("sidebar").style.display = "block";
-            initializeTransparency();
+            if (typeof syncResultBboxLayers === "function") {
+              syncResultBboxLayers('search', { kind: 'scenes', items: features, bbox: tile_params.bbox });
+            }
           });
       }
