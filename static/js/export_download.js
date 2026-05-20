@@ -111,6 +111,58 @@ downloading = false;
           url = download_url;
         }
 
+        const activeExportResultSource = analyzeChecked ? 'analyze' : 'download';
+
+        function prefetchSearchResultsForResultPanel() {
+          const searchUrl = `/search?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&collection=${encodeURIComponent(export_params.collection)}`;
+
+          fetch(searchUrl, {
+            method: 'GET'
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data && Array.isArray(data.features)) {
+                setResultSource('search', {
+                  kind: 'scenes',
+                  items: data.features,
+                });
+              }
+            })
+            .catch((error) => {
+              console.error('Error fetching search results for result panel:', error);
+            });
+        }
+
+        function loadExportOutputs(uid, sourceName) {
+          fetch(`/list-files?uid=${uid}`, {
+            method: 'GET'
+          })
+            .then(response => response.json())
+            .then(files => {
+              const allowedExtensions = sourceName === 'analyze'
+                ? ['png', 'tif', 'tiff', 'jpg', 'jpeg']
+                : ['png', 'tif', 'tiff', 'jpg', 'jpeg', 'zip'];
+
+              const items = Object.entries(files)
+                .filter(([name]) => {
+                  const extension = (name.split('.').pop() || '').toLowerCase();
+                  return extension && allowedExtensions.includes(extension) && name !== 'runtime.log';
+                })
+                .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
+                .map(([name, size]) => ({ name, size }));
+
+              setResultSource(sourceName, {
+                kind: 'files',
+                items,
+              });
+            })
+            .catch((error) => {
+              console.error('Error fetching export outputs for result panel:', error);
+            });
+        }
+
+        prefetchSearchResultsForResultPanel();
+
         fetch(url, { 
           method: 'GET' 
         }) 
@@ -167,6 +219,8 @@ downloading = false;
                     else{
                       document.getElementById("download-complete").classList.remove("hidden");
                     }
+
+                        loadExportOutputs(uid, activeExportResultSource);
                 
                   }  
                 }  

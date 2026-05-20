@@ -24,8 +24,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 document
   .getElementById("sidebar-clear-button")
   .addEventListener("click", function () {
-    document.getElementById("feature-list").innerHTML = '<label class="block text-sm font-medium text-gray-400 pt-4">Apply the Filter First!!!</label>';
-    document.getElementById("display-image-count").innerHTML = `Images: `;
+    clearResultSources();
 
     document.getElementById("search-clear-button").click();
     document.getElementById("export-clear-button").click();
@@ -44,8 +43,8 @@ document
       map.removeLayer(liveLayer);
     }
     setDefaultFilters();
+    clearResultSources();
 
-    document.getElementById("sidebar-clear-button").click();
     document.getElementById("searchLayerSwitcher").classList.add("hidden");
     document.getElementById("searchBboxLayerSwitcher").classList.add("hidden");
 
@@ -66,7 +65,7 @@ document
       map.removeLayer(liveLayer);
     }
     setDefaultFiltersExport();
-    document.getElementById("sidebar-clear-button").click();
+    clearResultSources();
     document.getElementById("custom-formula-view_export").classList.add('hidden');
     document.getElementById("dropdownButtonBands").innerHTML = `<img src="static/img/select-icon.png" alt="" class="size-5 shrink-0 rounded-full mr-2">Select Bands`;
 

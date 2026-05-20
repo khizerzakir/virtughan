@@ -289,6 +289,7 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
           document.getElementById("searchBboxLayerSwitcher").classList.remove("hidden");
           document.getElementById("feature-list").innerHTML = '';
           // startProgressComputation('search', null);
+          setActiveResultSource('search');
 
           startLoader('feature-list');
           document.getElementById("search_layer").checked = true;
@@ -418,85 +419,9 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
                 initializeTransparency();
               }
 
-              var featureList = document.getElementById("feature-list");
-              featureList.innerHTML = "";
-              
-              //add count of images
-              // console.log("count "+data.features.length);
-              document.getElementById("display-image-count").innerHTML = `Images: <span class="text-xs">${data.features.length}<span>`;
-
-              data.features.forEach(function (feature, index) {
-                var featureItem = document.createElement("div");
-                featureItem.className = "feature-item";
-                featureItem.innerHTML = `
-                            <ul role="list" class="divide-y divide-gray-100">
-                              <li id = "result_list_${index}" class="result-list-items flex justify-between gap-x-6 py-5 hover:bg-gray-100 transition-colors duration-300 cursor-pointer">
-                                <div class="flex min-w-0 gap-x-4">
-                                  <img class="size-12 flex-none rounded-full bg-gray-50" src="static/img/satellite-basemap.png" alt="">
-                                  <div class="min-w-0 flex-auto">
-                                    <p class="text-sm/6 font-semibold text-gray-900">${feature.id}</p>
-                                    <p class="mt-1 truncate text-xs/5 text-gray-500">${feature.properties.datetime}</p>
-                                  </div>
-                                </div>
-                                <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
-                                  <!--<p class="text-sm/6 text-gray-900">Co-Founder / CEO</p>-->
-                                  <p class="mt-auto text-xs/5 text-gray-400"><i class="fa-solid fa-cloud"></i> ${parseInt(feature.properties["eo:cloud_cover"])} % </time></p>
-                                  <!--<p class="result-icons text-sm/6 text-gray-500 hover:text-gray-900"><i id = "result_icon_${index}" class="fa-regular fa-eye"></i></p>-->
-                                </div>
-                              </li>            
-                        `;
-                featureItem.addEventListener("mouseleave", function (e) {
-                  // console.log(previousListMouseIn);
-                  // console.log(e.target.querySelector('.result-list-items').id);
-                  // console.log(clickedResultList);
-                  if (Object.keys(highlightedLayer._layers).length > 0) {
-                    // map.removeLayer(highlightedLayer);
-                    if(clickedResultList == false && previousListMouseIn != e.target.querySelector('.result-list-items').id){
-                      map.closePopup();
-                      highlightedLayer.clearLayers();
-                      // console.log("entered")
-                    }
-                    else if(previousListMouseIn == e.target.querySelector('.result-list-items').id){
-                      map.removeLayer(highlightedLayer);
-                    }
-                    
-                  }
-                  previousListMouseIn = e.target.querySelector('.result-list-items').id;
-                });
-                featureItem.addEventListener("mouseenter", function (e) {
-                  if (Object.keys(highlightedLayer._layers).length > 0) {
-                    map.closePopup();
-                    highlightedLayer.clearLayers();
-                  }
-                  var hoveredLayer = createLayer(feature);
-                  // if(previousListMouseIn != e.target.querySelector('.result-list-items').id){
-                    
-                    highlightedLayer.addLayer(hoveredLayer);
-                    
-                    // console.log(e)
-                    
-                    hoveredLayer.bindPopup(createPopup(feature));
-                  // }
-                  // else{
-
-                  // }
-                  highlightedLayer.addTo(map);
-                  // map.fitBounds(hoveredLayer.getBounds());
-                  if(document.getElementById("search_bbox_layer").checked){
-                    map.fitBounds(geojsonLayer.getBounds());
-                  }
-                 
-                  clickedResultList = false;
-                  
-
-                });
-
-                featureItem.addEventListener("click", function () {
-                  // console.log(highlightedLayer.getLayers()[0]);
-                  highlightedLayer.getLayers()[0].openPopup();
-                  clickedResultList = true;
-                })
-                featureList.appendChild(featureItem);
+              setResultSource('search', {
+                kind: 'scenes',
+                items: data.features,
               });
               stopLoader('feature-list');
 
