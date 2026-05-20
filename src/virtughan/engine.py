@@ -219,6 +219,8 @@ class VirtughanProcessor:
             ]
             with Progress(console=self.console) as progress:
                 task = progress.add_task("Computing Band Calculation", total=len(futures))
+                processed = 0
+                total = len(futures)
                 for future in as_completed(futures):
                     result, crs, current_transform, name_url = future.result()
                     if result is not None:
@@ -231,6 +233,13 @@ class VirtughanProcessor:
                         if self.timeseries:
                             self._save_intermediate_image(result, feature["id"])
                     progress.advance(task)
+                    processed += 1
+                    try:
+                        percent = int(processed / total * 100) if total else 100
+                    except Exception:
+                        percent = 0
+                    # Emit a stable, machine-parseable progress line in addition to rich output
+                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
 
     def _process_sequential(
         self,
@@ -238,19 +247,27 @@ class VirtughanProcessor:
         band2_urls: list[str | None],
         features: list[dict[str, Any]],
     ) -> None:
-        with Progress(console=self.console) as progress:
-            task = progress.add_task("Computing Band Calculation", total=len(band1_urls))
-            for band1_url, band2_url, feature in zip(band1_urls, band2_urls, features):
-                result, self.crs, self.transform, _ = self.fetch_process_custom_band(
-                    band1_url, band2_url
-                )
-                if result is not None:
-                    self.result_list.append(result)
-                    date = self._extract_date_from_feature(feature)
-                    self.dates.append(date)
-                    if self.timeseries:
-                        self._save_intermediate_image(result, feature["id"])
-                progress.advance(task)
+            with Progress(console=self.console) as progress:
+                task = progress.add_task("Computing Band Calculation", total=len(band1_urls))
+                processed = 0
+                total = len(band1_urls)
+                for band1_url, band2_url, feature in zip(band1_urls, band2_urls, features):
+                    result, self.crs, self.transform, _ = self.fetch_process_custom_band(
+                        band1_url, band2_url
+                    )
+                    if result is not None:
+                        self.result_list.append(result)
+                        date = self._extract_date_from_feature(feature)
+                        self.dates.append(date)
+                        if self.timeseries:
+                            self._save_intermediate_image(result, feature["id"])
+                    progress.advance(task)
+                    processed += 1
+                    try:
+                        percent = int(processed / total * 100) if total else 100
+                    except Exception:
+                        percent = 0
+                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
 
     def _save_intermediate_image(self, result: np.ndarray, image_name: str) -> None:
         output_file = os.path.join(self.output_dir, f"{image_name}_result.tif")

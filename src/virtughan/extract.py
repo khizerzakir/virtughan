@@ -175,17 +175,33 @@ class ExtractProcessor:
                 ]
                 with Progress(console=self.console) as progress:
                     task = progress.add_task("Extracting Bands", total=len(futures))
+                    processed = 0
+                    total = len(futures)
                     for future in as_completed(futures):
                         result = future.result()
                         result_lists.append(result)
                         progress.advance(task)
+                        processed += 1
+                        try:
+                            percent = int(processed / total * 100) if total else 100
+                        except Exception:
+                            percent = 0
+                        self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
         else:
             with Progress(console=self.console) as progress:
                 task = progress.add_task("Extracting Bands", total=len(band_urls_list))
+                processed = 0
+                total = len(band_urls_list)
                 for band_urls, feature in zip(band_urls_list, overlapping_features_removed):
                     result = self._fetch_and_save_bands(band_urls, feature["id"])
                     result_lists.append(result)
                     progress.advance(task)
+                    processed += 1
+                    try:
+                        percent = int(processed / total * 100) if total else 100
+                    except Exception:
+                        percent = 0
+                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
 
         if self.zip_output:
             valid_files = [f for f in result_lists if f is not None]
