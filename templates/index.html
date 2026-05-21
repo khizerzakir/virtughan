@@ -562,26 +562,19 @@
                           <input id="search_layer" type="checkbox" class="layerSwitcher form-checkbox h-4 w-4 text-blue-600" checked>
                           <label class="block text-sm/6 font-medium text-gray-700">Search Output Layer</label>
                         </div>
-                        <!-- <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
-                          <i id="zoom_liveLayer" class="zoom-to-layer fas fa-search-plus"></i>
-                        </button> -->
                       </div>
                       <div class="flex items-center mb-2">
                         <span class="text-sm mr-2 text-gray-500">Transparency:</span>
                         <input id = "transparency_liveLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
-                      <!-- <div id="search_progressbar" class="relative w-full bg-gray-300 h-3">
-                        <div class="absolute inset-0 flex items-center justify-center text-white" style="font-size:10px;" id="search_progress_text">0%</div>
-                        <div class="bg-green-500 h-3 rounded transition-all duration-500 ease-in-out" id="search_progress" style="width: 0%"></div>
-                      </div> -->
-                      <!-- <div class="flex items-center justify-end mt-2 space-x-4">
-                        <button title="Download" class="text-gray-500 hover:text-gray-700">
-                          <i id = "download-result-image" class="fas fa-download"></i>
+                      <div id="tileColorPalettes" class="relative inline-block w-full">
+                        <button id="TilePaletteSelectButton" class="block w-full px-4 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleTilePaletteDropdown()">
                         </button>
-                        <button title="View" class="text-gray-500 hover:text-gray-700">
-                          <i id = "view-result-image" class="fas fa-eye"></i>
-                        </button>
-                      </div> -->
+                        <div id="TilePaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
+                            <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
+                            </ul>
+                        </div>
+                      </div>
                     </div>
                     <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="search">
                       <div class="flex items-center justify-between mb-2">

@@ -144,3 +144,85 @@ function processRasterData(rasterData) {
 
     return validValues;
 }
+
+
+// Tile palette selector (for live view tiles)
+var selectedTilePalette = 'RdYlGn';
+
+function createTileColorOptions() {
+    const ul = document.querySelector("#TilePaletteSelect ul");
+    if (!ul) return;
+    ul.innerHTML = '';
+
+    Object.keys(colorScales).forEach((scaleName, index) => {
+        const colorScale = colorScales[scaleName];
+        const li = document.createElement('li');
+        li.className = "flex items-center px-4 py-2 cursor-pointer hover:bg-gray-100";
+        li.dataset.scale = scaleName;
+        li.onclick = () => selectTileColor(colorScale, scaleName);
+        
+        for (let i = 0; i <= 1; i += 0.1) {
+            const colorBox = document.createElement('span');
+            colorBox.className = "color-option";
+            colorBox.style.backgroundColor = colorScale(i);
+            colorBox.style.width = "10%";
+            li.appendChild(colorBox);
+        }
+        ul.appendChild(li);
+
+        if (index === 0) {
+            selectTileColor(colorScale, scaleName, true);
+        }
+    });
+}
+
+function toggleTilePaletteDropdown() {
+    const menu = document.getElementById("TilePaletteSelect");
+    if (menu) menu.classList.toggle("hidden");
+}
+
+function selectTileColor(colorScale, scaleName, skipReload) {
+    const button = document.getElementById("TilePaletteSelectButton");
+    if (!button) return;
+    button.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'flex';
+    for (let i = 0; i <= 1; i += 0.1) {
+        const colorBox = document.createElement('span');
+        colorBox.className = "color-option inline-block";
+        colorBox.style.backgroundColor = colorScale(i);
+        colorBox.style.width = "10%";
+        container.appendChild(colorBox);
+    }
+    button.appendChild(container);
+    button.dataset.selectedScale = scaleName;
+    button.value = scaleName;
+    selectedTilePalette = scaleName;
+    toggleTilePaletteDropdown();
+
+    // Reload tile layer with new colormap
+    if (!skipReload && typeof liveLayer !== 'undefined' && liveLayer && typeof map !== 'undefined') {
+        const currentUrl = liveLayer._url;
+        // Replace or add colormap_str param
+        let newUrl;
+        if (currentUrl.includes('colormap_str=')) {
+            newUrl = currentUrl.replace(/colormap_str=[^&]*/, 'colormap_str=' + scaleName);
+        } else {
+            newUrl = currentUrl + '&colormap_str=' + scaleName;
+        }
+        liveLayer.setUrl(newUrl);
+    }
+}
+
+document.addEventListener("click", function(event) {
+    const dropdown = document.getElementById("TilePaletteSelectButton");
+    const menu = document.getElementById("TilePaletteSelect");
+    if (dropdown && menu && !dropdown.contains(event.target)) {
+        menu.classList.add("hidden");
+    }
+});
+
+// Initialize tile palette on load
+document.addEventListener('DOMContentLoaded', function() {
+    createTileColorOptions();
+});

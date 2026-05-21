@@ -489,7 +489,7 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         var checkedTimeseriesSearch = document.getElementById("timeSeries_search").checked;
         var transparentTile = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2rjWQAAAAASUVORK5CYII=";
 
-        var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&bands=${encodeURIComponent(tile_params.bands)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}`;
+        var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&bands=${encodeURIComponent(tile_params.bands)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}&colormap_str=${encodeURIComponent(typeof selectedTilePalette !== 'undefined' ? selectedTilePalette : 'RdYlGn')}`;
         if(checkedTimeseriesSearch){
           encodedUrl_tiles += `&operation=${encodeURIComponent(tile_params.operation)}`;
         }
