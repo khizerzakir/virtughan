@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 from io import BytesIO
 from typing import Any
 
@@ -58,14 +59,14 @@ class TileProcessor:
         start_date: str,
         end_date: str,
         cloud_cover: int,
-        band1: str,
-        band2: str | None,
+        bands: tuple[str, ...],
         formula: str,
         colormap_str: str = "RdYlGn",
         latest: bool = True,
         operation: str = "median",
         collection: str = "sentinel-2-l2a",
     ) -> tuple[bytes, dict[str, Any]]:
+        bands_list = list(bands)
         collection_config = get_collection(collection)
         tile = mercantile.Tile(x, y, z)
         bbox = mercantile.bounds(tile)
@@ -83,7 +84,7 @@ class TileProcessor:
 
         if latest:
             image, feature = await self._generate_latest_tile(
-                results, x, y, z, band1, band2, formula, colormap_str, collection_config
+                results, x, y, z, bands_list, formula, colormap_str, collection_config
             )
         else:
             image, feature = await self._generate_timeseries_tile(
@@ -93,8 +94,7 @@ class TileProcessor:
                 z,
                 start_date,
                 end_date,
-                band1,
-                band2,
+                bands_list,
                 formula,
                 colormap_str,
                 operation,
@@ -111,8 +111,7 @@ class TileProcessor:
         x: int,
         y: int,
         z: int,
-        band1: str,
-        band2: str | None,
+        bands: list[str],
         formula: str,
         colormap_str: str,
         collection_config: Any,
@@ -124,39 +123,25 @@ class TileProcessor:
         if not results:
             raise HTTPException(status_code=404, detail="No images found after filtering")
         feature = results[0]
-        if band1 not in feature["assets"]:
-            raise HTTPException(
-                status_code=400, detail=f"Band '{band1}' not found in image assets"
-            )
-        band1_url = feature["assets"][band1]["href"]
-        band2_url = (
-            feature["assets"][band2]["href"] if band2 and band2 in feature["assets"] else None
-        )
+        for band in bands:
+            if band not in feature["assets"]:
+                raise HTTPException(
+                    status_code=400, detail=f"Band '{band}' not found in image assets"
+                )
 
+        urls = [feature["assets"][band]["href"] for band in bands]
         try:
-            tasks = [self.fetch_tile(band1_url, x, y, z)]
-            if band2_url:
-                tasks.append(self.fetch_tile(band2_url, x, y, z))
-            tiles = await asyncio.gather(*tasks)
-            band1_data = tiles[0]
-            band2_data = tiles[1] if band2_url else None
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+            tiles = await asyncio.gather(*[self.fetch_tile(url, x, y, z) for url in urls])
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-        if band2_data is not None:
-            band1_arr = band1_data[0].astype(float)
-            band2_arr = band2_data[0].astype(float)
-            result = evaluate_formula(formula, {"band1": band1_arr, "band2": band2_arr})
-            image = self.apply_colormap(result, colormap_str)
-        else:
-            inner_bands = band1_data.shape[0]
-            if inner_bands == 1:
-                band1_arr = band1_data[0].astype(float)
-                result = evaluate_formula(formula, {"band1": band1_arr})
-                image = self.apply_colormap(result, colormap_str)
-            else:
-                image = Image.fromarray(band1_data.transpose(1, 2, 0))
+        if len(bands) == 1 and tiles[0].shape[0] > 1:
+            image = Image.fromarray(tiles[0].transpose(1, 2, 0))
+            return image, feature
 
+        arrays = {band: tile[0].astype(float) for band, tile in zip(bands, tiles)}
+        result = evaluate_formula(formula, arrays)
+        image = self.apply_colormap(result, colormap_str)
         return image, feature
 
     async def _generate_timeseries_tile(
@@ -167,8 +152,7 @@ class TileProcessor:
         z: int,
         start_date: str,
         end_date: str,
-        band1: str,
-        band2: str | None,
+        bands: list[str],
         formula: str,
         colormap_str: str,
         operation: str,
@@ -177,18 +161,13 @@ class TileProcessor:
         results = remove_overlapping_tiles(results, collection_config.tile_id_parser)
         results = smart_filter_images(results, start_date, end_date)
 
-        tasks = []
-        valid_features = []
+        tasks: list[Awaitable[np.ndarray]] = []
+        valid_features: list[dict[str, Any]] = []
         for feature in results:
-            if band1 not in feature["assets"]:
+            if any(band not in feature["assets"] for band in bands):
                 continue
-            if band2 and band2 not in feature["assets"]:
-                continue
-            band1_url = feature["assets"][band1]["href"]
-            band2_url = feature["assets"][band2]["href"] if band2 else None
-            tasks.append(self.fetch_tile(band1_url, x, y, z))
-            if band2_url:
-                tasks.append(self.fetch_tile(band2_url, x, y, z))
+            for band in bands:
+                tasks.append(self.fetch_tile(feature["assets"][band]["href"], x, y, z))
             valid_features.append(feature)
 
         if not valid_features:
@@ -196,22 +175,21 @@ class TileProcessor:
 
         try:
             tiles = await asyncio.gather(*tasks)
-            step = 2 if band2 else 1
-            band1_tiles = [tiles[i] for i in range(0, len(tiles), step)]
-            band2_tiles = [tiles[i + 1] for i in range(0, len(tiles), step)] if band2 else []
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e)) from e
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-        band1_agg = aggregate_time_series(
-            [tile[0].astype(float) for tile in band1_tiles], operation
-        )
-        if band2_tiles:
-            band2_agg = aggregate_time_series(
-                [tile[0].astype(float) for tile in band2_tiles], operation
-            )
-            result = evaluate_formula(formula, {"band1": band1_agg, "band2": band2_agg})
-        else:
-            result = evaluate_formula(formula, {"band1": band1_agg})
+        step = len(bands)
+        per_band_stacks: dict[str, list[np.ndarray]] = {band: [] for band in bands}
+        for feature_index in range(len(valid_features)):
+            base = feature_index * step
+            for band_index, band in enumerate(bands):
+                per_band_stacks[band].append(tiles[base + band_index][0].astype(float))
 
+        aggregated = {
+            band: aggregate_time_series(stack, operation)
+            for band, stack in per_band_stacks.items()
+        }
+
+        result = evaluate_formula(formula, aggregated)
         image = self.apply_colormap(result, colormap_str)
         return image, valid_features[0]

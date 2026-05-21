@@ -72,7 +72,6 @@ class TestBandsEndpoint:
         for band_name, band_info in data.items():
             assert isinstance(band_name, str)
             assert isinstance(band_info["resolution"], int)
-            assert isinstance(band_info["common_name"], str)
 
     def test_landsat_bands_response_shape_matches_frontend(self):
         response = client.get("/bands", params={"collection": LANDSAT_COLLECTION})
@@ -80,7 +79,6 @@ class TestBandsEndpoint:
         for band_name, band_info in data.items():
             assert isinstance(band_name, str)
             assert isinstance(band_info["resolution"], int)
-            assert isinstance(band_info["common_name"], str)
 
 
 class TestSearchEndpoint:
@@ -174,8 +172,8 @@ class TestTileEndpoint:
                 "start_date": "2024-01-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "formula": "band1",
+                "bands": "red",
+                "formula": "red",
                 "collection": SENTINEL2_COLLECTION,
             },
         )
@@ -192,9 +190,8 @@ class TestTileEndpoint:
                 "start_date": "2024-01-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir",
-                "formula": "(band2 - band1) / (band2 + band1)",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
                 "collection": SENTINEL2_COLLECTION,
             },
         )
@@ -209,8 +206,8 @@ class TestTileEndpoint:
                 "start_date": "2024-01-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "formula": "band1",
+                "bands": "red",
+                "formula": "red",
                 "collection": LANDSAT_COLLECTION,
             },
         )
@@ -225,9 +222,8 @@ class TestTileEndpoint:
                 "start_date": "2024-01-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir08",
-                "formula": "(band2 - band1) / (band2 + band1)",
+                "bands": "red,nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
                 "collection": LANDSAT_COLLECTION,
             },
         )
@@ -241,7 +237,8 @@ class TestTileEndpoint:
             params={
                 "start_date": "2024-01-01",
                 "end_date": "2025-01-01",
-                "band1": "fake_band",
+                "bands": "fake_band",
+                "formula": "fake_band",
                 "collection": SENTINEL2_COLLECTION,
             },
         )
@@ -251,8 +248,8 @@ class TestTileEndpoint:
         response = client.get(
             "/tile/5/3055/1728",
             params={
-                "band1": "red",
-                "formula": "band1",
+                "bands": "red",
+                "formula": "red",
                 "collection": SENTINEL2_COLLECTION,
             },
         )
@@ -271,6 +268,34 @@ class TestTileEndpoint:
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
 
+    def test_tile_formula_extra_band_rejected(self):
+        response = client.get(
+            "/tile/12/3055/1728",
+            params={
+                "start_date": "2024-01-01",
+                "end_date": "2025-01-01",
+                "bands": "red,nir,blue",
+                "formula": "(nir - red) / (nir + red)",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "not used by formula" in response.json()["detail"]
+
+    def test_tile_formula_missing_band_rejected(self):
+        response = client.get(
+            "/tile/12/3055/1728",
+            params={
+                "start_date": "2024-01-01",
+                "end_date": "2025-01-01",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + swir16)",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "unknown band" in response.json()["detail"]
+
     def test_tile_timeseries_with_operation(self):
         response = client.get(
             "/tile/12/3055/1728",
@@ -278,9 +303,8 @@ class TestTileEndpoint:
                 "start_date": "2024-09-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir",
-                "formula": "(band2 - band1) / (band2 + band1)",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
                 "timeseries": True,
                 "operation": "median",
                 "collection": SENTINEL2_COLLECTION,
@@ -297,9 +321,8 @@ class TestTileEndpoint:
                 "start_date": "2024-09-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir08",
-                "formula": "(band2 - band1) / (band2 + band1)",
+                "bands": "red,nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
                 "timeseries": True,
                 "operation": "median",
                 "collection": LANDSAT_COLLECTION,
@@ -333,9 +356,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "collection": SENTINEL2_COLLECTION,
             },
@@ -353,9 +375,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "collection": SENTINEL2_COLLECTION,
             },
@@ -378,9 +399,8 @@ class TestExportEndpoint:
                 "start_date": "2024-11-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
+                "bands": "red,nir08",
                 "timeseries": True,
                 "collection": LANDSAT_COLLECTION,
             },
@@ -404,9 +424,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "collection": SENTINEL2_COLLECTION,
             },
@@ -429,9 +448,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "operation": "median",
                 "collection": SENTINEL2_COLLECTION,
@@ -454,9 +472,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "operation": "mode",
                 "collection": SENTINEL2_COLLECTION,
@@ -477,9 +494,8 @@ class TestExportEndpoint:
                 "start_date": "2024-11-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
+                "bands": "red,nir08",
                 "timeseries": True,
                 "collection": LANDSAT_COLLECTION,
             },
@@ -501,9 +517,8 @@ class TestExportEndpoint:
                 "start_date": "2024-11-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
+                "bands": "red,nir08",
                 "timeseries": True,
                 "operation": "median",
                 "collection": LANDSAT_COLLECTION,
@@ -526,9 +541,8 @@ class TestExportEndpoint:
                 "start_date": "2024-11-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
+                "bands": "red,nir08",
                 "timeseries": True,
                 "operation": "mode",
                 "collection": LANDSAT_COLLECTION,
@@ -549,9 +563,8 @@ class TestExportEndpoint:
                 "start_date": "2024-11-01",
                 "end_date": "2025-01-01",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir08",
+                "formula": "(nir08 - red) / (nir08 + red)",
+                "bands": "red,nir08",
                 "timeseries": True,
                 "smart_filters": True,
                 "collection": LANDSAT_COLLECTION,
@@ -566,8 +579,8 @@ class TestExportEndpoint:
             "/export",
             params={
                 "bbox": NEPAL_BBOX,
-                "band1": "red",
-                "band2": "nir",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
                 "timeseries": False,
                 "collection": SENTINEL2_COLLECTION,
             },
@@ -582,9 +595,8 @@ class TestExportEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "formula": "(band2 - band1) / (band2 + band1)",
-                "band1": "red",
-                "band2": "nir",
+                "formula": "(nir - red) / (nir + red)",
+                "bands": "red,nir",
                 "timeseries": True,
                 "smart_filters": True,
                 "collection": SENTINEL2_COLLECTION,
@@ -599,7 +611,8 @@ class TestExportEndpoint:
             "/export",
             params={
                 "bbox": NEPAL_BBOX,
-                "band1": "fake_band",
+                "bands": "fake_band",
+                "formula": "fake_band",
                 "collection": SENTINEL2_COLLECTION,
             },
         )
@@ -610,11 +623,80 @@ class TestExportEndpoint:
             "/export",
             params={
                 "bbox": NEPAL_BBOX,
-                "band1": "red",
+                "bands": "red",
+                "formula": "red",
                 "collection": "nonexistent",
             },
         )
         assert response.status_code == 400
+
+    def test_export_formula_extra_band_rejected(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "red,nir,blue",
+                "formula": "(nir - red) / (nir + red)",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "not used by formula" in response.json()["detail"]
+
+    def test_export_formula_missing_band_rejected(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "red,nir",
+                "formula": "(nir - red) / swir16",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "unknown band" in response.json()["detail"]
+
+    def test_export_formula_syntax_error_rejected(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "red,nir",
+                "formula": "(nir - red /",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "invalid formula" in response.json()["detail"]
+
+    def test_export_formula_attribute_access_blocked(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "red",
+                "formula": "red.__class__",
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 400
+        assert "forbidden control characters" in response.json()["detail"]
+
+    def test_export_four_band_formula(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "start_date": "2024-12-15",
+                "end_date": "2024-12-31",
+                "cloud_cover": 30,
+                "bands": "red,nir,swir16,swir22",
+                "formula": "(nir - red) / (nir + red) + 0.1 * (swir22 - swir16)",
+                "timeseries": True,
+                "collection": SENTINEL2_COLLECTION,
+            },
+        )
+        assert response.status_code == 201
 
 
 class TestImageDownloadEndpoint:
@@ -733,8 +815,8 @@ class TestLogsEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
                 "timeseries": True,
                 "collection": SENTINEL2_COLLECTION,
             },
@@ -761,8 +843,8 @@ class TestListFilesEndpoint:
                 "start_date": "2024-12-15",
                 "end_date": "2024-12-31",
                 "cloud_cover": 30,
-                "band1": "red",
-                "band2": "nir",
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
                 "timeseries": True,
                 "collection": SENTINEL2_COLLECTION,
             },

@@ -13,13 +13,13 @@ from typing import Any
 import matplotlib
 import numpy as np
 import structlog
-from matplotlib import pyplot as plt
-from PIL import Image
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from matplotlib import pyplot as plt
+from PIL import Image
 from rich.console import Console
 from shapely.geometry import box, mapping
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -31,6 +31,7 @@ from starlette.status import HTTP_504_GATEWAY_TIMEOUT
 from src.virtughan.collections import COLLECTIONS, get_collection
 from src.virtughan.engine import VirtughanProcessor
 from src.virtughan.extract import ExtractProcessor
+from src.virtughan.formula import FormulaError, validate_formula
 from src.virtughan.stac import search_stac_async
 from src.virtughan.tile import TileProcessor
 
@@ -165,33 +166,33 @@ def _validate_dates(start_date: str | None, end_date: str | None) -> tuple[str, 
     return start_date, end_date
 
 
-def _validate_collection_bands(collection: str, band1: str, band2: str | None = None) -> None:
+def _parse_bands(bands_str: str) -> list[str]:
+    bands = [b.strip() for b in bands_str.split(",") if b.strip()]
+    if not bands:
+        raise HTTPException(status_code=400, detail="bands must not be empty")
+    return bands
+
+
+def _validate_formula_request(collection: str, formula: str, bands_str: str) -> list[str]:
     try:
         config = get_collection(collection)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if config.validate_bands([band1]):
+    bands = _parse_bands(bands_str)
+    invalid = config.validate_bands(bands)
+    if invalid:
         raise HTTPException(
             status_code=400,
-            detail=f"Band '{band1}' not found in {collection}",
+            detail=f"Bands not in {collection}: {invalid}",
         )
-    if band2:
-        if config.validate_bands([band2]):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Band '{band2}' not found in {collection}",
-            )
-        if band1 != band2:
-            b1_res = config.bands[band1].resolution
-            b2_res = config.bands[band2].resolution
-            if b1_res != b2_res:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Resolution mismatch: '{band1}' ({b1_res}m) vs '{band2}' ({b2_res}m)"
-                    ),
-                )
+
+    try:
+        validate_formula(formula, bands)
+    except FormulaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return bands
 
 
 # endregion
@@ -336,7 +337,7 @@ async def list_collections():
     return {
         name: {
             "bands": {
-                band_name: {"resolution": band.resolution, "common_name": band.common_name}
+                band_name: {"resolution": band.resolution}
                 for band_name, band in config.bands.items()
             }
         }
@@ -352,10 +353,7 @@ async def get_bands(
         config = get_collection(collection)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {
-        band_name: {"resolution": band.resolution, "common_name": band.common_name}
-        for band_name, band in config.bands.items()
-    }
+    return {band_name: {"resolution": band.resolution} for band_name, band in config.bands.items()}
 
 
 # endregion
@@ -409,11 +407,13 @@ async def compute_aoi_over_time(
     ),
     cloud_cover: int = Query(30, ge=0, le=100, description="Cloud cover percentage"),
     formula: str = Query(
-        "(band2 - band1) / (band2 + band1)",
-        description="Band math formula (default: NDVI)",
+        "(nir - red) / (nir + red)",
+        description="Band math formula using band names (e.g. NDVI: (nir - red) / (nir + red))",
     ),
-    band1: str = Query("red", description="First band"),
-    band2: str = Query("nir", description="Second band"),
+    bands: str = Query(
+        "red,nir",
+        description="Comma-separated band names referenced by the formula",
+    ),
     operation: str = Query(None, description="Aggregation operation"),
     timeseries: bool = Query(True, description="Generate timeseries"),
     smart_filter: bool = Query(False, alias="smart_filters", description="Apply smart filter"),
@@ -421,8 +421,6 @@ async def compute_aoi_over_time(
 ):
     if not timeseries and operation is None:
         raise HTTPException(status_code=400, detail="Operation is required when timeseries=false")
-    if band1 is None:
-        raise HTTPException(status_code=400, detail="band1 is required")
     if operation and operation not in VALID_OPERATIONS:
         raise HTTPException(
             status_code=400,
@@ -431,7 +429,7 @@ async def compute_aoi_over_time(
 
     bbox_coords = _parse_bbox(bbox)
     start_date, end_date = _validate_dates(start_date, end_date)
-    _validate_collection_bands(collection, band1, band2)
+    bands_list = _validate_formula_request(collection, formula, bands)
 
     uid = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + str(uuid.uuid4())[:6]
     output_dir = os.path.join(STATIC_EXPORT_DIR, uid)
@@ -446,8 +444,7 @@ async def compute_aoi_over_time(
         end_date,
         cloud_cover,
         formula,
-        band1,
-        band2,
+        bands_list,
         operation,
         timeseries,
         output_dir,
@@ -471,9 +468,8 @@ async def get_tile(
     start_date: str = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(None, description="End date (YYYY-MM-DD)"),
     cloud_cover: int = Query(30, ge=0, le=100),
-    band1: str = Query("red", description="First band"),
-    band2: str | None = Query(None, description="Second band"),
-    formula: str = Query("band1", description="Band math formula"),
+    bands: str = Query("red", description="Comma-separated band names referenced by the formula"),
+    formula: str = Query("red", description="Band math formula using band names"),
     colormap_str: str = Query("RdYlGn", description="Colormap"),
     operation: str = Query("median", description="Aggregation operation"),
     timeseries: bool = Query(False, description="Analyze timeseries"),
@@ -481,10 +477,8 @@ async def get_tile(
 ):
     if z < 10 or z > 23:
         raise HTTPException(status_code=400, detail="Zoom level must be between 10 and 23")
-    if band1 is None:
-        raise HTTPException(status_code=400, detail="band1 is required")
 
-    _validate_collection_bands(collection, band1, band2)
+    bands_list = _validate_formula_request(collection, formula, bands)
 
     if not start_date:
         start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -501,8 +495,7 @@ async def get_tile(
             start_date,
             end_date,
             cloud_cover,
-            band1,
-            band2,
+            tuple(bands_list),
             formula,
             colormap_str,
             operation=operation,
@@ -700,8 +693,7 @@ async def _run_computation(
     end_date: str,
     cloud_cover: int,
     formula: str,
-    band1: str,
-    band2: str,
+    bands: list[str],
     operation: str | None,
     timeseries: bool,
     output_dir: str,
@@ -722,8 +714,7 @@ async def _run_computation(
                     end_date=end_date,
                     cloud_cover=cloud_cover,
                     formula=formula,
-                    band1=band1,
-                    band2=band2,
+                    bands=bands,
                     operation=operation,
                     timeseries=timeseries,
                     output_dir=output_dir,
