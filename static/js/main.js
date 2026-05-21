@@ -90,12 +90,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 const COLLECTION_DEFAULTS = {
   "sentinel-2-l2a": {
-    search: { band1: "visual", band2: "nir" },
-    export: { band1: "red", band2: "nir" },
+    search: { bands: "visual", formula: "visual" },
+    export: { bands: "red,nir", formula: "(nir - red) / (nir + red)" },
   },
   "landsat-c2-l2": {
-    search: { band1: "red", band2: "nir08" },
-    export: { band1: "red", band2: "nir08" },
+    search: { bands: "red", formula: "red" },
+    export: { bands: "red,nir08", formula: "(nir08 - red) / (nir08 + red)" },
   },
 };
 
@@ -173,35 +173,113 @@ function renderBandCheckboxes(collection) {
 
 function populateBandSelectors(collection) {
   const bandNames = getBandNames(collection);
-  const band1Select = document.getElementById('band1');
-  const band2Select = document.getElementById('band2');
-  if (!band1Select || !band2Select) {
-    return;
-  }
+  const container = document.getElementById('formula-bands-container');
+  if (!container) return;
 
-  const optionMarkup = ['<option value="">Select Band</option>']
-    .concat(bandNames.map((bandName) => `<option value="${bandName.toUpperCase()}">${bandName.toUpperCase()}</option>`))
-    .join('');
-
-  band1Select.innerHTML = optionMarkup;
-  band2Select.innerHTML = optionMarkup;
+  // Store available bands for use by addBandRow
+  container.dataset.availableBands = JSON.stringify(bandNames);
 
   const calculatorLabel = document.getElementById('calculator_bands');
   if (calculatorLabel) {
     calculatorLabel.textContent = `${COLLECTION_LABELS[collection] || collection} Bands`;
   }
+
+  // Rebuild band rows from current export_params.bands
+  rebuildFormulaBandRows();
+}
+
+function rebuildFormulaBandRows() {
+  const container = document.getElementById('formula-bands-container');
+  if (!container) return;
+
+  const bandNames = JSON.parse(container.dataset.availableBands || '[]');
+  const currentBands = export_params.bands ? export_params.bands.split(',').map(b => b.trim()).filter(Boolean) : [];
+
+  // Filter out bands that don't exist in the current collection
+  const validBands = currentBands.filter(b => bandNames.includes(b));
+
+  container.innerHTML = '';
+  if (validBands.length === 0) {
+    addBandRow(container, bandNames, '');
+  } else {
+    validBands.forEach(band => addBandRow(container, bandNames, band));
+  }
+
+  // Update export_params.bands to only valid bands
+  export_params.bands = validBands.join(',');
+}
+
+function addBandRow(container, bandNames, selectedValue) {
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-2 mb-2 band-row';
+
+  const select = document.createElement('select');
+  select.className = 'w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none band-select';
+
+  // Only show bands not already used in other rows
+  const usedBands = getUsedBands(container, null);
+  const availableForThis = bandNames.filter(b => !usedBands.includes(b) || b === selectedValue);
+
+  select.innerHTML = '<option value="">Select Band</option>' +
+    availableForThis.map(b => `<option value="${b}" ${b === selectedValue ? 'selected' : ''}>${b.toUpperCase()}</option>`).join('');
+
+  select.addEventListener('change', function() {
+    updateBandsBox();
+    refreshBandOptions(container, bandNames);
+  });
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'text-red-400 hover:text-red-600 text-sm px-2';
+  removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+  removeBtn.addEventListener('click', function() {
+    if (container.querySelectorAll('.band-row').length > 1) {
+      row.remove();
+      updateBandsBox();
+      refreshBandOptions(container, bandNames);
+    }
+  });
+
+  row.appendChild(select);
+  row.appendChild(removeBtn);
+  container.appendChild(row);
+}
+
+function getUsedBands(container, excludeSelect) {
+  const used = [];
+  container.querySelectorAll('.band-select').forEach(s => {
+    if (s !== excludeSelect && s.value) used.push(s.value);
+  });
+  return used;
+}
+
+function refreshBandOptions(container, bandNames) {
+  container.querySelectorAll('.band-select').forEach(select => {
+    const currentValue = select.value;
+    const usedByOthers = getUsedBands(container, select);
+    const available = bandNames.filter(b => !usedByOthers.includes(b));
+
+    select.innerHTML = '<option value="">Select Band</option>' +
+      available.map(b => `<option value="${b}" ${b === currentValue ? 'selected' : ''}>${b.toUpperCase()}</option>`).join('');
+  });
+}
+
+function updateFormulaBandsUI() {
+  const container = document.getElementById('formula-bands-container');
+  if (!container) return;
+  rebuildFormulaBandRows();
 }
 
 function applyCollectionDefaults(scope, collection) {
   const defaults = COLLECTION_DEFAULTS[collection] || COLLECTION_DEFAULTS['sentinel-2-l2a'];
   if (scope === 'search') {
     tile_params.collection = collection;
-    tile_params.band1 = defaults.search.band1;
-    tile_params.band2 = defaults.search.band2;
+    tile_params.bands = defaults.search.bands;
+    tile_params.formula = defaults.search.formula;
   } else {
     export_params.collection = collection;
-    export_params.band1 = defaults.export.band1;
-    export_params.band2 = defaults.export.band2;
+    export_params.bands = defaults.export.bands;
+    export_params.formula = defaults.export.formula;
     export_params.bands_list = '';
     const dropdownButton = document.getElementById('dropdownButtonBands');
     if (dropdownButton) {
@@ -215,18 +293,9 @@ function applyCollectionDefaults(scope, collection) {
     }
   }
 
-  if (scope === 'export') {
-    populateBandSelectors(collection);
-    renderBandCheckboxes(collection);
-    const band1Select = document.getElementById('band1');
-    const band2Select = document.getElementById('band2');
-    if (band1Select) {
-      band1Select.value = export_params.band1.toUpperCase();
-    }
-    if (band2Select) {
-      band2Select.value = export_params.band2.toUpperCase();
-    }
-  }
+  // Always update the formula band selectors with the current collection's bands
+  populateBandSelectors(collection);
+  renderBandCheckboxes(collection);
 
   if (scope === 'export' && typeof updateBandsBox === 'function') {
     updateBandsBox();
@@ -265,41 +334,39 @@ function setCollectionByRadio(radio) {
 }
 
 //band box change - advance filter (formula) start
-document.getElementById("band1").addEventListener("change", updateBandsBox);
-document.getElementById("band2").addEventListener("change", updateBandsBox);
-
+//band box change - advance filter (formula) start
 function updateBandsBox() {
-    const band1_v = document.getElementById("band1").value;
-    const band2_v = document.getElementById("band2").value;
+    const container = document.getElementById('formula-bands-container');
+    if (!container) return;
 
-    if (band1_v) {
-      export_params.band1 = band1_v.toLowerCase();
-    }
-    if (band2_v) {
-      export_params.band2 = band2_v.toLowerCase();
-    }
+    const selects = container.querySelectorAll('.band-select');
+    const selectedBands = [];
+    selects.forEach(select => {
+      if (select.value) selectedBands.push(select.value);
+    });
 
-    const mappedBands = new Set();
-
-    if (band1_v) {
-        mappedBands.add(`Band1 (${band1_v})`);
-    }
-
-    if (band2_v) {
-        mappedBands.add(`Band2 (${band2_v})`);
-    }
-
-    const bandsArray = Array.from(mappedBands);
+    export_params.bands = selectedBands.join(',');
 
     const mappedBandsList = document.getElementById("mapped-bands");
-    mappedBandsList.innerHTML = bandsArray.map(band => `<li class="attribute-item hover:bg-gray-100 p-1">${band}</li>`).join('');
-
-    // if (bandsArray.length > 0) {
-    //     document.getElementById("bandsSection").classList.remove("hidden");
-    // } else {
-    //     document.getElementById("bandsSection").classList.add("hidden");
-    // }
+    if (mappedBandsList) {
+      mappedBandsList.innerHTML = selectedBands.map(band => `<li class="attribute-item hover:bg-gray-100 p-1">${band}</li>`).join('');
+    }
 }
+
+// Add Band button handler
+document.addEventListener('click', function(event) {
+  if (event.target && (event.target.id === 'add-band-btn' || event.target.closest('#add-band-btn'))) {
+    const container = document.getElementById('formula-bands-container');
+    if (!container) return;
+    const bandNames = JSON.parse(container.dataset.availableBands || '[]');
+    if (container.querySelectorAll('.band-row').length >= 12) return;
+    // Don't add if all bands are already used
+    const usedBands = getUsedBands(container, null);
+    if (usedBands.length >= bandNames.length) return;
+    addBandRow(container, bandNames, '');
+    refreshBandOptions(container, bandNames);
+  }
+});
 //band box change - advance filter (formula) end
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -472,19 +539,24 @@ document.addEventListener('DOMContentLoaded', function() {
           }
   
         if(templateText == "NDVI"){
-          param.formula = "(band2 - band1) / (band2 + band1)";
-          param.band1 = 'red';
-          param.band2 = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          const nirBand = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          param.formula = `(${nirBand} - red) / (${nirBand} + red)`;
+          param.bands = `red,${nirBand}`;
         }
         else if(templateText == "NDWI"){
-          param.formula = "(band2 - band1) / (band2 + band1)";
-          param.band1 = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
-          param.band2 = 'green';
+          const nirBand = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          param.formula = `(green - ${nirBand}) / (green + ${nirBand})`;
+          param.bands = `${nirBand},green`;
         }
         else if(templateText == "visual"){
-          param.formula = "band1";
-          param.band1 = param.collection === 'landsat-c2-l2' ? 'red' : 'visual';
-          param.band2 = '';
+          const visBand = param.collection === 'landsat-c2-l2' ? 'red' : 'visual';
+          param.formula = visBand;
+          param.bands = visBand;
+        }
+
+        // Update formula band UI if export was changed
+        if (param === export_params && typeof updateFormulaBandsUI === 'function') {
+          updateFormulaBandsUI();
         }
         
       });
