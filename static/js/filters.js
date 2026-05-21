@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         document.getElementById("band-list-container").classList.add("hidden");
         document.getElementById("export-filter-option").classList.remove("hidden");
         document.getElementById("analyze-filters").classList.remove("hidden");
-        exportBtn.innerHTML = `<i class="fa-regular fa-eye"></i> Visualize and Export`;
+        exportBtn.innerHTML = `<i class="fa-regular fa-eye"></i> Compute`;
         // For analyze: only enable if a filter option has been selected
         const selectBtn = document.getElementById("select-button_export");
         const filterText = selectBtn ? selectBtn.querySelector('.truncate') : null;
