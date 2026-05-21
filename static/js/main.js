@@ -566,6 +566,29 @@ document.addEventListener('DOMContentLoaded', function() {
           param.formula = `(green - ${nirBand}) / (green + ${nirBand})`;
           param.bands = `${nirBand},green`;
         }
+        else if(templateText == "NDBI"){
+          const nirBand = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          param.formula = `(swir16 - ${nirBand}) / (swir16 + ${nirBand})`;
+          param.bands = `swir16,${nirBand}`;
+        }
+        else if(templateText == "NDSI"){
+          param.formula = '(green - swir16) / (green + swir16)';
+          param.bands = 'green,swir16';
+        }
+        else if(templateText == "SAVI"){
+          const nirBand = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          param.formula = `1.5 * (${nirBand} - red) / (${nirBand} + red + 0.5)`;
+          param.bands = `red,${nirBand}`;
+        }
+        else if(templateText == "EVI"){
+          const nirBand = param.collection === 'landsat-c2-l2' ? 'nir08' : 'nir';
+          param.formula = `2.5 * (${nirBand} - red) / (${nirBand} + 6*red - 7.5*blue + 1)`;
+          param.bands = `red,${nirBand},blue`;
+        }
+        else if(templateText == "moisture"){
+          param.formula = '(nir08 - swir16) / (nir08 + swir16)';
+          param.bands = 'nir08,swir16';
+        }
         else if(templateText == "visual"){
           const visBand = param.collection === 'landsat-c2-l2' ? 'red' : 'visual';
           param.formula = visBand;

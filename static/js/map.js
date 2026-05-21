@@ -527,6 +527,14 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         if (typeof updateLayerCountSummary === "function") {
           updateLayerCountSummary();
         }
+        // Update tiles layer info tooltip
+        var tilesInfo = document.getElementById('tiles-layer-info');
+        if (tilesInfo) {
+          var filterBtn = document.getElementById('select-button_search');
+          var filterName = filterBtn ? filterBtn.querySelector('.truncate').innerText : '';
+          var label = (filterName && filterName !== 'Select Option') ? filterName + ' | ' : 'Custom | ';
+          tilesInfo.setAttribute('data-formula', label + 'Formula: ' + tile_params.formula + ' | Bands: ' + tile_params.bands);
+        }
 
         fetchSearchResults({
           bbox: tile_params.bbox,
