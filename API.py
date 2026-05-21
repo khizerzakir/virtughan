@@ -342,7 +342,11 @@ async def list_collections():
     return {
         name: {
             "bands": {
-                band_name: {"resolution": band.resolution}
+                band_name: {
+                    "resolution": band.resolution,
+                    "wavelength": band.wavelength,
+                    "description": band.description,
+                }
                 for band_name, band in config.bands.items()
             }
         }
@@ -358,7 +362,14 @@ async def get_bands(
         config = get_collection(collection)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {band_name: {"resolution": band.resolution} for band_name, band in config.bands.items()}
+    return {
+        band_name: {
+            "resolution": band.resolution,
+            "wavelength": band.wavelength,
+            "description": band.description,
+        }
+        for band_name, band in config.bands.items()
+    }
 
 
 # endregion

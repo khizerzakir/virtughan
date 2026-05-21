@@ -21,6 +21,8 @@ def _parse_landsat_tile_id(item_id: str) -> tuple[str, str]:
 @dataclass(frozen=True)
 class BandInfo:
     resolution: int
+    wavelength: str = ""
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,33 +47,33 @@ EARTH_SEARCH_URL = "https://earth-search.aws.element84.com/v1"
 PLANETARY_COMPUTER_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 
 SENTINEL2_BANDS = {
-    "red": BandInfo(10),
-    "green": BandInfo(10),
-    "blue": BandInfo(10),
-    "nir": BandInfo(10),
-    "swir22": BandInfo(20),
-    "rededge2": BandInfo(20),
-    "rededge3": BandInfo(20),
-    "rededge1": BandInfo(20),
-    "swir16": BandInfo(20),
-    "wvp": BandInfo(20),
-    "nir08": BandInfo(20),
-    "aot": BandInfo(20),
-    "coastal": BandInfo(60),
-    "nir09": BandInfo(60),
-    "scl": BandInfo(20),
-    "visual": BandInfo(10),
+    "red": BandInfo(10, "665 nm", "Red, Band 4"),
+    "green": BandInfo(10, "560 nm", "Green, Band 3"),
+    "blue": BandInfo(10, "490 nm", "Blue, Band 2"),
+    "nir": BandInfo(10, "842 nm", "Near-Infrared, Band 8"),
+    "swir22": BandInfo(20, "2190 nm", "Short-Wave Infrared 2, Band 12"),
+    "rededge2": BandInfo(20, "740 nm", "Red Edge 2, Band 6"),
+    "rededge3": BandInfo(20, "783 nm", "Red Edge 3, Band 7"),
+    "rededge1": BandInfo(20, "705 nm", "Red Edge 1, Band 5"),
+    "swir16": BandInfo(20, "1610 nm", "Short-Wave Infrared 1, Band 11"),
+    "wvp": BandInfo(20, "945 nm", "Water Vapour, Band 9"),
+    "nir08": BandInfo(20, "865 nm", "Near-Infrared Narrow, Band 8A"),
+    "aot": BandInfo(20, "443 nm", "Aerosol Optical Thickness"),
+    "coastal": BandInfo(60, "443 nm", "Coastal Aerosol, Band 1"),
+    "nir09": BandInfo(60, "945 nm", "Water Vapour, Band 9"),
+    "scl": BandInfo(20, "", "Scene Classification Layer"),
+    "visual": BandInfo(10, "", "True Color Image (RGB)"),
 }
 
 LANDSAT_BANDS = {
-    "red": BandInfo(30),
-    "green": BandInfo(30),
-    "blue": BandInfo(30),
-    "nir08": BandInfo(30),
-    "swir16": BandInfo(30),
-    "swir22": BandInfo(30),
-    "coastal": BandInfo(30),
-    "lwir11": BandInfo(100),
+    "red": BandInfo(30, "655 nm", "Red, Band 4"),
+    "green": BandInfo(30, "560 nm", "Green, Band 3"),
+    "blue": BandInfo(30, "480 nm", "Blue, Band 2"),
+    "nir08": BandInfo(30, "865 nm", "Near-Infrared, Band 5"),
+    "swir16": BandInfo(30, "1610 nm", "Short-Wave Infrared 1, Band 6"),
+    "swir22": BandInfo(30, "2200 nm", "Short-Wave Infrared 2, Band 7"),
+    "coastal": BandInfo(30, "443 nm", "Coastal Aerosol, Band 1"),
+    "lwir11": BandInfo(100, "10900 nm", "Thermal Infrared, Band 10"),
 }
 
 
