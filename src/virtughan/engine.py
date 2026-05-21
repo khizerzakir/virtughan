@@ -45,7 +45,7 @@ class VirtughanProcessor:
         cloud_cover: int,
         formula: str,
         bands: list[str],
-        operation: str,
+        operation: str | None,
         timeseries: bool,
         output_dir: str,
         log_file: IO[str] = sys.stdout,
@@ -230,6 +230,7 @@ class VirtughanProcessor:
         self.intermediate_images_with_text.append(self.add_text_to_image(output_file, image_name))
 
     def _aggregate_results(self) -> np.ndarray:
+        assert self.operation is not None
         sorted_dates_and_results = sorted(zip(self.dates, self.result_list), key=lambda x: x[0])
         sorted_dates, sorted_results = zip(*sorted_dates_and_results)
 
@@ -293,24 +294,44 @@ class VirtughanProcessor:
         self, result_aggregate: np.ndarray, output_file: str
     ) -> None:
         result_aggregate = np.ma.masked_invalid(result_aggregate)
-        image = self._create_image(result_aggregate)
-        self._plot_result(image, output_file)
+        image, vmin, vmax = self._create_image(result_aggregate)
+        self._plot_result(image, output_file, vmin, vmax)
         save_geotiff(result_aggregate, output_file, self.crs, self.transform)
 
-    def _create_image(self, data: np.ndarray) -> np.ndarray:
-        if data.shape[0] == 1:
-            result_normalized = (data[0] - data[0].min()) / (data[0].max() - data[0].min())
-            colormap = plt.get_cmap(self.cmap)
-            result_colored = colormap(result_normalized)
-            return (result_colored[:, :, :3] * 255).astype(np.uint8)
+    @staticmethod
+    def _robust_range(band: np.ndarray) -> tuple[float, float]:
+        if isinstance(band, np.ma.MaskedArray):
+            valid = np.ma.compressed(band)
         else:
-            image_array = np.transpose(data, (1, 2, 0))
-            image_array = (
-                (image_array - image_array.min()) / (image_array.max() - image_array.min()) * 255
-            )
-            return image_array.astype(np.uint8)
+            valid = band[np.isfinite(band)]
+        if valid.size == 0:
+            return 0.0, 1.0
+        vmin, vmax = np.percentile(valid, [2, 98])
+        if vmax <= vmin:
+            vmax = vmin + 1.0
+        return float(vmin), float(vmax)
 
-    def _plot_result(self, image: np.ndarray, output_file: str) -> None:
+    def _create_image(self, data: np.ndarray) -> tuple[np.ndarray, float, float]:
+        if data.shape[0] == 1:
+            band = data[0]
+            vmin, vmax = self._robust_range(band)
+            filled = np.ma.filled(band, vmin) if isinstance(band, np.ma.MaskedArray) else band
+            normalized = np.clip((filled - vmin) / (vmax - vmin), 0, 1)
+            colormap = plt.get_cmap(self.cmap)
+            colored = colormap(normalized)
+            return (colored[:, :, :3] * 255).astype(np.uint8), vmin, vmax
+
+        image_array = np.transpose(data, (1, 2, 0))
+        vmin, vmax = self._robust_range(image_array)
+        filled = (
+            np.ma.filled(image_array, vmin)
+            if isinstance(image_array, np.ma.MaskedArray)
+            else image_array
+        )
+        normalized = np.clip((filled - vmin) / (vmax - vmin), 0, 1) * 255
+        return normalized.astype(np.uint8), vmin, vmax
+
+    def _plot_result(self, image: np.ndarray, output_file: str, vmin: float, vmax: float) -> None:
         plt.figure(figsize=(10, 10))
         plt.imshow(image)
         plt.title(f"Aggregated {self.operation} Calculation")
@@ -318,7 +339,10 @@ class VirtughanProcessor:
             f"From {self.start_date} to {self.end_date}\nCloud Cover < {self.cloud_cover}%\nBBox: {self.bbox}\nTotal Scene Processed: {len(self.result_list)}"
         )
         plt.colorbar(
-            plt.cm.ScalarMappable(cmap=plt.get_cmap(self.cmap)),
+            plt.cm.ScalarMappable(
+                cmap=plt.get_cmap(self.cmap),
+                norm=plt.Normalize(vmin=vmin, vmax=vmax),
+            ),
             ax=plt.gca(),
             shrink=0.5,
         )
@@ -344,10 +368,9 @@ class VirtughanProcessor:
         with rio.open(image_path) as src:
             image_array = (
                 src.read(1) if src.count == 1 else np.dstack([src.read(i) for i in range(1, 4)])
-            )
-            image_array = (
-                (image_array - image_array.min()) / (image_array.max() - image_array.min()) * 255
-            )
+            ).astype(float)
+            vmin, vmax = self._robust_range(image_array)
+            image_array = np.clip((image_array - vmin) / (vmax - vmin), 0, 1) * 255
             pil_image = Image.fromarray(image_array.astype(np.uint8))
 
         plt.figure(figsize=(10, 10))

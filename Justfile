@@ -11,7 +11,7 @@ run:
 lint:
     uv run ruff check src/ tests/ API.py --fix
     uv run ruff format src/ tests/ API.py
-    uv run ty check src/
+    uv run ty check src/ tests/ API.py
     uv run pre-commit run --all-files
 
 test:

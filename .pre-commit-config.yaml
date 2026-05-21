@@ -8,6 +8,15 @@ repos:
       - id: ruff-format
         exclude: ^docs/
 
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty type check
+        entry: uv run ty check src/ tests/ API.py
+        language: system
+        types: [python]
+        pass_filenames: false
+
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.13.9
     hooks:

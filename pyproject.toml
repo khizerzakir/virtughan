@@ -107,5 +107,11 @@ invalid-assignment = "ignore"
 unresolved-attribute = "ignore"
 missing-argument = "ignore"
 
+[[tool.ty.overrides]]
+include = ["API.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+missing-argument = "ignore"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
