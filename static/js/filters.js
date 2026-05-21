@@ -5,30 +5,50 @@ document.addEventListener('DOMContentLoaded', (event) => {
       download_checked = document.getElementById("download-data").checked;
       console.log("changed");
 
+      const exportBtn = document.getElementById("export-map-view-button");
+
       if (analyze_checked) {
         document.getElementById("band-list-container").classList.add("hidden");
         document.getElementById("export-filter-option").classList.remove("hidden");
         document.getElementById("analyze-filters").classList.remove("hidden");
-        document.getElementById('export-map-view-button').innerHTML = `<i class="fa-regular fa-eye"></i> Visualize and Export`;
+        exportBtn.innerHTML = `<i class="fa-regular fa-eye"></i> Visualize and Export`;
+        // For analyze: only enable if a filter option has been selected
+        const selectBtn = document.getElementById("select-button_export");
+        const filterText = selectBtn ? selectBtn.querySelector('.truncate') : null;
+        const hasFilter = filterText && filterText.innerText.trim() !== "Select Option";
+        if (!hasFilter) {
+          exportBtn.classList.add('bg-gray-500', 'pointer-events-none');
+          exportBtn.classList.remove('bg-blue-700');
+        } else {
+          exportBtn.classList.remove('bg-gray-500', 'pointer-events-none');
+          exportBtn.classList.add('bg-blue-700');
+        }
       }
       else {
         document.getElementById("band-list-container").classList.remove("hidden");
         document.getElementById("export-filter-option").classList.add("hidden");
         document.getElementById("analyze-filters").classList.add("hidden");
-        document.getElementById('export-map-view-button').innerHTML = `<i class="fas fa-download"></i> Download`;
+        exportBtn.innerHTML = `<i class="fas fa-download"></i> Download`;
+        // For download: only enable if bands are selected
+        const hasBands = export_params && export_params.bands_list && export_params.bands_list.length > 0;
+        if (!hasBands) {
+          exportBtn.classList.add('bg-gray-500', 'pointer-events-none');
+          exportBtn.classList.remove('bg-blue-700');
+        } else {
+          exportBtn.classList.remove('bg-gray-500', 'pointer-events-none');
+          exportBtn.classList.add('bg-blue-700');
+        }
       }
     })
   })
 })
 
 document
-  .getElementById("sidebar-clear-button")
+  .getElementById("output-layer-clear-button")
   .addEventListener("click", function () {
-    document.getElementById("feature-list").innerHTML = '<label class="block text-sm font-medium text-gray-400 pt-4">Apply the Filter First!!!</label>';
-    document.getElementById("display-image-count").innerHTML = `Images: `;
-
-    document.getElementById("search-clear-button").click();
-    document.getElementById("export-clear-button").click();
+    if (typeof openClearConfirmModal === "function") {
+      openClearConfirmModal();
+    }
   });
 
 document
@@ -44,8 +64,8 @@ document
       map.removeLayer(liveLayer);
     }
     setDefaultFilters();
+    clearResultSources();
 
-    document.getElementById("sidebar-clear-button").click();
     document.getElementById("searchLayerSwitcher").classList.add("hidden");
     document.getElementById("searchBboxLayerSwitcher").classList.add("hidden");
 
@@ -66,11 +86,12 @@ document
       map.removeLayer(liveLayer);
     }
     setDefaultFiltersExport();
-    document.getElementById("sidebar-clear-button").click();
+    clearResultSources();
     document.getElementById("custom-formula-view_export").classList.add('hidden');
     document.getElementById("dropdownButtonBands").innerHTML = `<img src="static/img/select-icon.png" alt="" class="size-5 shrink-0 rounded-full mr-2">Select Bands`;
 
     document.getElementById("computeLayerSwitcher").classList.add("hidden");
+    document.getElementById("downloadLayerSwitcher").classList.add("hidden");
 
     document.getElementById("select-button-bbox").innerHTML = `<span class="col-start-1 row-start-1 flex items-center gap-3 pr-6">
                     <i class="fa-regular fa-square"></i>

@@ -16,3 +16,4 @@ implementation.md
 poetry.lock
 virtughan_output
 hotfix-test-1.0.2/
+.vscode/

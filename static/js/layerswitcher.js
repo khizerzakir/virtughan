@@ -1,3 +1,4 @@
+
  //layer switching functionality
  document.addEventListener('click', function(event) {
     if (event.target && event.target.classList.contains('layerSwitcher')) {
@@ -12,42 +13,36 @@
             map.removeLayer(liveLayer);
           }
       }
-      else if(layerId=="search_bbox_layer"){
+      else if(event.target.classList.contains('bboxLayerSwitcher')){
+        const source = event.target.dataset.source;
         if(checkedStatus){
-            map.addLayer(geojsonLayer);
+            if (typeof syncResultBboxLayerForSource === "function") {
+              syncResultBboxLayerForSource(source);
+            } else if (typeof refreshActiveResult === "function") {
+              refreshActiveResult();
+            }
           }
           else{
-            map.removeLayer(geojsonLayer);
+            if (typeof clearBboxLayerForSource === "function") {
+              clearBboxLayerForSource(source);
+            } else if (typeof clearImagesBboxLayer === "function") {
+              clearImagesBboxLayer();
+            }
           }
       }
       else if(layerId == "compute_layer"){
-        // console.log("entered compute_layer");
-        // console.log("compute checked status: "+checkedStatus);
-        // console.log(computeLayer);
-        
         if(checkedStatus){
-          // console.log("addRasterLayer");
-          map.addLayer(computeLayer); //remove comment
+          if (computeLayer) map.addLayer(computeLayer);
         }
         else{
-          // console.log("removeRasterLayer");
-          map.removeLayer(computeLayer);
-          
+          if (computeLayer && map.hasLayer(computeLayer)) map.removeLayer(computeLayer);
         }
       }
 
-      
+      if (typeof updateLayerCountSummary === "function") {
+        updateLayerCountSummary();
+      }
     }
-
-    // //zoom to layer click on layerswitcher
-    // if (event.target && event.target.classList.contains('zoom-to-layer')) {
-    //   const zoomId = event.target.id;
-    //   console.log('zoom ID:', zoomId);
-
-    //   if(zoomId == "search_zoom"){
-    //     //get bound at the time of apply and fit it. I will do it later.
-    //   }
-    // }
   });
 
 
@@ -60,6 +55,13 @@ const layers = {
 "geojsonLayer": geojsonLayer,
 "computeLayer": computeLayer
 };
+
+// Also check per-source bbox layers
+if (typeof sourceBboxLayers !== "undefined") {
+  layers["analyzeBboxLayer"] = sourceBboxLayers.analyze;
+  layers["downloadBboxLayer"] = sourceBboxLayers.download;
+}
+
 const layer = layers[layerName];
 if (layer) {
   if (layer.getBounds) {
@@ -71,7 +73,6 @@ if (layer) {
   } else {
       console.error(`Layer ${layerName} does not support bounding box`);
   }
-  // console.log(`Zooming to ${layerName}`);
 } else {
   console.error(`Layer ${layerName} not found`);
 }
@@ -80,7 +81,8 @@ if (layer) {
 // Query all zoom icons with an ID starting with "zoom_"
 document.querySelectorAll('i[id^="zoom_"]').forEach(icon => {
 icon.addEventListener('click', function() {
-  const layerName = this.id.split('_')[1];
+  // Get everything after "zoom_"
+  const layerName = this.id.substring(5);
   zoomToLayer(layerName);
 });
 });

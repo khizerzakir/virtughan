@@ -53,6 +53,29 @@ document.addEventListener('DOMContentLoaded', function() {
         tab.classList.add('border-blue-500', 'text-blue-500');
         tabPanels.forEach(panel => panel.classList.add('hidden'));
         tabPanels[index].classList.remove('hidden');
+
+        // When Export tab is activated (index 2), validate button state
+        if (index === 2) {
+          const exportBtn = document.getElementById("export-map-view-button");
+          const analyzeChecked = document.getElementById("analyze-data").checked;
+          if (exportBtn) {
+            let shouldEnable = false;
+            if (analyzeChecked) {
+              const selectBtn = document.getElementById("select-button_export");
+              const filterText = selectBtn ? selectBtn.querySelector('.truncate') : null;
+              shouldEnable = filterText && filterText.innerText.trim() !== "Select Option";
+            } else {
+              shouldEnable = typeof export_params !== "undefined" && export_params && export_params.bands_list && export_params.bands_list.length > 0;
+            }
+            if (shouldEnable) {
+              exportBtn.classList.remove('bg-gray-500', 'pointer-events-none');
+              exportBtn.classList.add('bg-blue-700');
+            } else {
+              exportBtn.classList.add('bg-gray-500', 'pointer-events-none');
+              exportBtn.classList.remove('bg-blue-700');
+            }
+          }
+        }
       });
     });
 
@@ -130,6 +153,18 @@ function renderBandCheckboxes(collection) {
       }
       if (export_params) {
         export_params.bands_list = selectedOptions.length > 0 ? selectedOptions.join(',').toLowerCase() : "";
+      }
+      // Enable/disable export button based on band selection (for download mode)
+      const exportBtn = document.getElementById("export-map-view-button");
+      if (exportBtn && selectedOptions.length > 0) {
+        exportBtn.classList.remove('bg-gray-500', 'pointer-events-none');
+        exportBtn.classList.add('bg-blue-700');
+      } else if (exportBtn && selectedOptions.length === 0) {
+        const analyzeChecked = document.getElementById("analyze-data").checked;
+        if (!analyzeChecked) {
+          exportBtn.classList.add('bg-gray-500', 'pointer-events-none');
+          exportBtn.classList.remove('bg-blue-700');
+        }
       }
     });
   });
@@ -392,12 +427,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // console.log("fired");
             // coords.classList.add('hidden');
             drawBBoxOption.classList.remove('hidden');
-            // console.log(Object.keys(highlightedLayer._layers).length > 0);
-            if(Object.keys(drawnItems._layers).length > 0){
-              // console.log(drawnItems);
-              updateDrawnItemBbox(drawnItems);
+            if (drawnItems) {
+              drawnItems.clearLayers();
               map.addLayer(drawnItems);
             }
+            if (rectangle) {
+              map.removeLayer(rectangle);
+              rectangle = null;
+            }
+            export_params_bbox_changed = false;
+            export_params.bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+            document.getElementById("map-window-content").innerHTML = export_params.bbox;
           } else if (selectedItemId === 'upload-file-bbox') {
             coords.classList.add('hidden');
             uploadBBoxFileOption.classList.remove('hidden');

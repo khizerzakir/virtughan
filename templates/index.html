@@ -536,6 +536,22 @@
             <div class="tab-panel hidden overflow-y-auto custom-scrollbar">
               <!-- Content for Tab 2 -->
               <div id="sidebar" class="p-4 tab-scrollable-content" >
+                <div class="pb-2 space-y-2">
+                  <div id="layer-count-summary" class="text-xs text-gray-500 px-2">
+                    Layers: <span id="layer-count-search">Search (0)</span> | <span id="layer-count-analyze">Analyze (0)</span> | <span id="layer-count-download">Download (0)</span>
+                  </div>
+                  <div class="flex flex-col gap-2 rounded-md bg-gray-50 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span id="result-active-source" class="text-xs text-gray-500">Active result: None</span>
+                    <div class="flex items-center gap-2">
+                      <select id="result-source-switcher" class="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-36">
+                        <option value="search">Search</option>
+                        <option value="analyze">Analyze</option>
+                        <option value="download">Download</option>
+                      </select>
+                      <button id="output-layer-clear-button" type="button" class="clear-visualize-filter text-gray-500 text-xs whitespace-nowrap" title="Reset"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                  </div>
+                </div>
                 <div id="layerSwitcherContainer" class="hidden w-full max-w-md mx-auto rounded-lg pb-4"> 
                   <label class="block text-sm/6 font-medium text-gray-900 pb-2">Output Layer</label> 
                   <div id="layerSwitcherList" class="">
@@ -566,11 +582,11 @@
                         </button>
                       </div> -->
                     </div>
-                    <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
+                    <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="search">
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
-                          <input id="search_bbox_layer" type="checkbox" class="layerSwitcher form-checkbox h-4 w-4 text-blue-600">
-                          <label class="block text-sm/6 font-medium text-gray-700">Searched Images Bbox</label>
+                          <input id="search_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="search">
+                          <label id="images_bbox_label_search" class="block text-sm/6 font-medium text-gray-700">Bbox Search</label>
                         </div>
                         <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
                           <i id="zoom_geojsonLayer" class="zoom-to-layer fas fa-search-plus"></i>
@@ -580,18 +596,36 @@
                         <span class="text-sm mr-2 text-gray-500">Transparency:</span>
                         <input id = "transparency_geojsonLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
-                      <!-- <div id="search_bbox_progressbar" class="relative w-full bg-gray-300 h-3">
-                        <div class="absolute inset-0 flex items-center justify-center text-white" style="font-size:10px;" id="search_progress_text">0%</div>
-                        <div class="bg-green-500 h-3 rounded transition-all duration-500 ease-in-out" id="search_progress" style="width: 0%"></div>
-                      </div> -->
-                      <!-- <div class="flex items-center justify-end mt-2 space-x-4">
-                        <button title="Download" class="text-gray-500 hover:text-gray-700">
-                          <i id = "download-result-image" class="fas fa-download"></i>
+                    </div>
+                    <div id = "analyzeBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="analyze">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="analyze_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="analyze">
+                          <label id="images_bbox_label_analyze" class="block text-sm/6 font-medium text-gray-700">Bbox Analyze</label>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_analyzeBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
                         </button>
-                        <button title="View" class="text-gray-500 hover:text-gray-700">
-                          <i id = "view-result-image" class="fas fa-eye"></i>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
+                        <input id = "transparency_analyzeBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
+                      </div>
+                    </div>
+                    <div id = "downloadBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="download">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="download_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="download">
+                          <label id="images_bbox_label_download" class="block text-sm/6 font-medium text-gray-700">Bbox Download</label>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_downloadBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
                         </button>
-                      </div> -->
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
+                        <input id = "transparency_downloadBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
+                      </div>
                     </div>
 
                     <div id="computeLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
@@ -628,12 +662,6 @@
                         </button>
                       </div>
                       </div>
-                      <div id="download-complete">
-                        <label class="block text-xs font-medium text-gray-900 pb-2">Layer Ready to Download!!!</label>
-                        <button id="download-band-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
-                          <i class="fas fa-download"></i>
-                        </button>
-                      </div>
                       
                       <div id="compute_progressbar" class="relative w-full">
                         <div class="mb-4">
@@ -648,15 +676,34 @@
                         </div>
                       </div>
                       
-                      
+                    </div>
+
+                    <div id="downloadLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
+                      <div id="download-complete" class="hidden">
+                        <label class="block text-xs font-medium text-gray-900 pb-2">Layer Ready to Download!!!</label>
+                        <button id="download-band-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                      <div id="download_progressbar" class="relative w-full" style="display: none;">
+                        <div class="mb-4">
+                          <label id="download_computation_progress_text" class="block text-xs font-medium text-gray-900 pb-2">Download Progress</label>
+                          <ul id="DownloadProgressTexts" class="list-none list-inside text-xs text-gray-700 mb-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <li style = "font-size: 10px;">Please Wait Downloading...</li>
+                          </ul>
+                        </div>
+                        <div class="relative w-full bg-gray-300 h-3 rounded mt-4">
+                          <div class="absolute inset-0 flex items-center justify-center text-white" id="download_progress_text">0%</div>
+                          <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="download_progress" style="width: 0%"></div>
+                        </div>
+                      </div>
                     </div>
                           
                     
                   </div> 
                 </div>              
-                <div class="flex items-center justify-between pt-2">
-                  <label id = "display-image-count" class="block  font-medium text-gray-900 pb-4">Images: <span class="text-xs"><span></label>
-                  <span id="sidebar-clear-button" class="clear-visualize-filter text-gray-500 text-xs"><i class="fa-solid fa-rotate-right"></i> Clear</span>
+                <div id="output-layer-toolbar" class="flex items-center justify-between gap-3 pt-2">
+                  <label id="display-image-count" class="block font-medium text-gray-900">Images: <span class="text-xs"></span></label>
                 </div>
                 <div id="feature-list" style = "min-height: 100px; max-height: 450px;">
                   <label class="block text-sm font-medium text-gray-400 pt-4">Apply the Filter First!!!</label>
@@ -1199,6 +1246,17 @@
   </div>
    <!-- Result and timeslider modal end -->
 
+  <div id="clear-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      <h3 id="clear-confirm-title" class="text-lg font-semibold text-gray-900">Clear results?</h3>
+      <p id="clear-confirm-message" class="mt-2 text-sm text-gray-600">Are you sure you want to clear the current results?</p>
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button id="clear-confirm-cancel" type="button" class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button id="clear-confirm-accept" type="button" class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">Clear</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -1210,6 +1268,7 @@
 
     <!-- custom js -->
     <script src="../static/js/main.js"></script>
+    <script src="../static/js/result_sources.js"></script>
     <script src="../static/js/map.js"></script>
     <script src="../static/js/filters.js"></script>
     <script src="../static/js/draw.js"></script>
@@ -1518,7 +1577,9 @@
         setTimeout(() => {
           if (progressBarContainer) {
             progressBarContainer.style.display = 'none';
-            document.getElementById("after-compute-buttons").classList.remove("hidden");
+            if (name === 'compute') {
+              document.getElementById("after-compute-buttons").classList.remove("hidden");
+            }
           }
         }, 1000);
       } else {
