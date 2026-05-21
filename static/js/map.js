@@ -90,13 +90,21 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
             zIndex: 1
         });
 
+        var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri',
+            maxZoom: 22,
+            maxNativeZoom: 19,
+            zIndex: 1
+        });
+
         // Add the default base layer to the map
         osm.addTo(map);
 
         // Create a base layers object
         var baseLayers = {
             "OpenStreetMap": osm,
-            "Satellite":satellite,
+            "Satellite (Google)": satellite,
+            "Satellite (ESRI)": esriSatellite,
             "Open Topomap": opentopomap,
         };
 

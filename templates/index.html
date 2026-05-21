@@ -277,7 +277,7 @@
     width: 30px;
     height: 30px;
     cursor: pointer;
-    background-image: url('static/img/hand-regular.png'); /* Replace with your hand icon URL */
+    background-image: url('static/img/hand-regular.png');
     background-repeat: no-repeat;
     background-position: center;
     padding: 2px;
@@ -288,6 +288,34 @@
     .leaflet-control-custom {
       display: none;
     }
+  }
+
+  .measure-tooltip {
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e40af;
+  }
+
+  .tool-dropdown a {
+    display: flex !important;
+    align-items: center;
+    width: auto !important;
+    height: auto !important;
+    line-height: normal !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: #4b5563 !important;
+  }
+
+  .leaflet-draw-toolbar.leaflet-draw-toolbar-top,
+  .leaflet-draw-actions,
+  .leaflet-draw-toolbar:not(.leaflet-draw-toolbar-top) {
+    display: none !important;
   }
 </style>
 
@@ -1132,6 +1160,62 @@
   </div>
   <!-- filter modal end -->
 
+  <!-- upload layer modal start -->
+  <div id="uploadLayerModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden z-40">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full sm:w-96 max-h-[80vh] relative">
+      <button id="closeUploadLayerModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+      <h3 class="text-lg font-semibold mb-2 text-gray-800">Upload Temporary Layer</h3>
+      <p class="text-xs text-gray-500 mb-4">They will be removed on page refresh. Supported: GeoJSON, CSV (with lat/lon), Shapefile (.zip)</p>
+      <div id="upload-layer-dropzone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors">
+        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+        <p class="text-sm text-gray-500">Drag & drop a file here</p>
+        <p class="text-xs text-gray-400 mt-1">or click to browse</p>
+        <input id="upload-layer-input" type="file" accept=".geojson,.json,.csv,.zip" class="hidden">
+      </div>
+      <div id="upload-layer-status" class="mt-3 text-xs text-gray-500 hidden"></div>
+      <div id="upload-layer-csv-options" class="mt-3 hidden">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Select coordinate columns:</label>
+        <div class="flex gap-2">
+          <select id="csv-lat-col" class="w-1/2 rounded border border-gray-300 px-2 py-1 text-xs"></select>
+          <select id="csv-lon-col" class="w-1/2 rounded border border-gray-300 px-2 py-1 text-xs"></select>
+        </div>
+        <button id="csv-confirm-btn" class="mt-2 w-full bg-blue-500 text-white rounded px-3 py-1.5 text-xs hover:bg-blue-600">Add to Map</button>
+      </div>
+      <div id="uploaded-layers-list" class="mt-4 border-t border-gray-100 pt-3 hidden">
+        <label class="block text-xs font-medium text-gray-700 mb-2">Uploaded Layers</label>
+        <ul id="uploaded-layers-ul" class="space-y-1 text-xs max-h-32 overflow-y-auto custom-scrollbar"></ul>
+      </div>
+    </div>
+  </div>
+  <!-- upload layer modal end -->
+
+  <!-- point goto modal start -->
+  <div id="pointGotoModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden z-40">
+    <div class="bg-white rounded-lg shadow-lg p-5 w-80 relative">
+      <button id="closePointGotoModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+      <h3 class="text-sm font-semibold mb-3 text-gray-800"><i class="fas fa-crosshairs text-blue-500 mr-1"></i>Go to Coordinates</h3>
+      <div class="flex gap-2 mb-3">
+        <div class="flex-1">
+          <label class="block text-xs text-gray-500 mb-1">Latitude</label>
+          <input id="point-goto-lat" type="number" step="any" placeholder="28.2020" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none">
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs text-gray-500 mb-1">Longitude</label>
+          <input id="point-goto-lon" type="number" step="any" placeholder="83.9872" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none">
+        </div>
+      </div>
+      <div class="flex items-center justify-between">
+        <button id="point-goto-clear" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash mr-1"></i>Clear Markers</button>
+        <button id="point-goto-submit" class="bg-blue-500 text-white rounded px-4 py-1.5 text-sm hover:bg-blue-600"><i class="fas fa-map-marker-alt mr-1"></i>Go</button>
+      </div>
+    </div>
+  </div>
+  <!-- point goto modal end -->
+
   <!-- upload modal start -->
   <div id="uploadModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden z-40">
     <div class="bg-white rounded-lg shadow-md p-6 w-full sm:w-4/5 md:w-3/5 lg:w-2/5 max-h-[80vh] relative overflow-y-auto custom-scrollbar">
@@ -1217,6 +1301,9 @@
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
 
     <!-- custom js -->
     <script src="../static/js/main.js"></script>
@@ -1228,6 +1315,7 @@
 
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="../static/js/colorpalette.js"></script>
+    <script src="../static/js/maptools.js"></script>
     <script src="../static/js/message_warning.js"></script>
 
 
