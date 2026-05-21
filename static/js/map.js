@@ -196,9 +196,8 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
           "startDate": "",         
           "endDate": "",           
           "cloudCover": 30,        
-          "band1": "visual",        
-          "band2": "nir",           
-          "formula": "band1",
+          "bands": "visual",
+          "formula": "visual",
           "timeseries": "false",
           "operation": "median",
           "collection": "sentinel-2-l2a"
@@ -209,9 +208,8 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         "startDdate": "2024-01-02",
         "endDate": "2025-01-01",
         "cloudCover": 30,
-        "formula": "(band2 - band1) / (band2 + band1)",
-        "band1": "red",
-        "band2": "nir",
+        "formula": "(nir - red) / (nir + red)",
+        "bands": "red,nir",
         "operation": "median",
         "timeseries": "false",
         "bands_list":"",
@@ -491,7 +489,7 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         var checkedTimeseriesSearch = document.getElementById("timeSeries_search").checked;
         var transparentTile = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2rjWQAAAAASUVORK5CYII=";
 
-        var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&band1=${encodeURIComponent(tile_params.band1)}&band2=${encodeURIComponent(tile_params.band2)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}`;
+        var encodedUrl_tiles = `/tile/{z}/{x}/{y}?start_date=${encodeURIComponent(tile_params.startDate)}&end_date=${encodeURIComponent(tile_params.endDate)}&cloud_cover=${encodeURIComponent(tile_params.cloudCover)}&formula=${encodeURIComponent(tile_params.formula)}&bands=${encodeURIComponent(tile_params.bands)}&timeseries=${encodeURIComponent(tile_params.timeseries)}&collection=${encodeURIComponent(tile_params.collection)}`;
         if(checkedTimeseriesSearch){
           encodedUrl_tiles += `&operation=${encodeURIComponent(tile_params.operation)}`;
         }
