@@ -66,38 +66,87 @@ function getClearModalMessageLabel() {
 }
 
 function updateImagesBboxLabel(source) {
-  const label = document.getElementById("images_bbox_label");
-  if (label) {
-    label.textContent = getImagesBboxLabel(source);
+  // No longer needed with per-source bbox labels, kept for backward compat
+}
+
+function updateLayerCountSummary() {
+  const searchCount = countLayersForSource("search");
+  const analyzeCount = countLayersForSource("analyze");
+  const downloadCount = countLayersForSource("download");
+
+  const searchEl = document.getElementById("layer-count-search");
+  const analyzeEl = document.getElementById("layer-count-analyze");
+  const downloadEl = document.getElementById("layer-count-download");
+
+  if (searchEl) searchEl.textContent = `Search (${searchCount})`;
+  if (analyzeEl) analyzeEl.textContent = `Analyze (${analyzeCount})`;
+  if (downloadEl) downloadEl.textContent = `Download (${downloadCount})`;
+}
+
+function countLayersForSource(source) {
+  let count = 0;
+  if (source === "search") {
+    if (typeof liveLayer !== "undefined" && liveLayer && map && map.hasLayer(liveLayer)) count++;
+    // geojsonLayer is the bbox layer for search - count it via checkbox only
+    const bboxCheck = document.getElementById("search_bbox_layer");
+    if (bboxCheck && bboxCheck.checked) count++;
+  } else if (source === "analyze") {
+    if (typeof computeLayer !== "undefined" && computeLayer && map && map.hasLayer(computeLayer)) count++;
+    const bboxCheck = document.getElementById("analyze_bbox_layer");
+    if (bboxCheck && bboxCheck.checked) count++;
+  } else if (source === "download") {
+    const bboxCheck = document.getElementById("download_bbox_layer");
+    if (bboxCheck && bboxCheck.checked) count++;
   }
+  return count;
 }
 
 function updateLayerSectionsForSource(source, hasResults) {
   const layerSwitcherContainer = document.getElementById("layerSwitcherContainer");
   const searchLayerSwitcher = document.getElementById("searchLayerSwitcher");
   const searchBboxLayerSwitcher = document.getElementById("searchBboxLayerSwitcher");
+  const analyzeBboxLayerSwitcher = document.getElementById("analyzeBboxLayerSwitcher");
+  const downloadBboxLayerSwitcher = document.getElementById("downloadBboxLayerSwitcher");
   const computeLayerSwitcher = document.getElementById("computeLayerSwitcher");
-  const downloadComplete = document.getElementById("download-complete");
+  const downloadLayerSwitcher = document.getElementById("downloadLayerSwitcher");
 
   const showSearchLayers = source === "search" && hasResults;
   const showAnalyzeLayers = source === "analyze" && hasResults;
   const showDownloadLayers = source === "download" && hasResults;
 
+  // layerSwitcherContainer should be visible if ANY source has active content
+  const hasAnyContent = resultSourceState.search || resultSourceState.analyze || resultSourceState.download;
   if (layerSwitcherContainer) {
-    layerSwitcherContainer.classList.toggle("hidden", !hasResults);
+    layerSwitcherContainer.classList.toggle("hidden", !hasAnyContent);
   }
+
+  // Search layers: toggle based on active source
   if (searchLayerSwitcher) {
     searchLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
   }
   if (searchBboxLayerSwitcher) {
     searchBboxLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
   }
+
+  // Bbox layers for analyze/download: toggle based on active source
+  if (analyzeBboxLayerSwitcher) {
+    analyzeBboxLayerSwitcher.classList.toggle("hidden", !showAnalyzeLayers);
+  }
+  if (downloadBboxLayerSwitcher) {
+    downloadBboxLayerSwitcher.classList.toggle("hidden", !showDownloadLayers);
+  }
+
+  // computeLayerSwitcher: only visible when analyze is the active dropdown
   if (computeLayerSwitcher) {
-    computeLayerSwitcher.classList.toggle("hidden", !showAnalyzeLayers);
+    computeLayerSwitcher.classList.toggle("hidden", source !== "analyze");
   }
-  if (downloadComplete) {
-    downloadComplete.classList.toggle("hidden", !showDownloadLayers);
+
+  // downloadLayerSwitcher: only visible when download is the active dropdown
+  if (downloadLayerSwitcher) {
+    downloadLayerSwitcher.classList.toggle("hidden", source !== "download");
   }
+
+  updateLayerCountSummary();
 }
 
 function normalizeItems(payload) {
@@ -225,8 +274,8 @@ function renderResultPayload(source, payload) {
     }
     updateImagesBboxLabel(source);
     updateLayerSectionsForSource(source, false);
-    if (typeof clearResultBboxLayers === "function") {
-      clearResultBboxLayers();
+    if (typeof clearBboxLayerForSource === "function") {
+      clearBboxLayerForSource(source);
     }
     return;
   }
@@ -295,21 +344,31 @@ function clearActiveOutputLayer() {
     }
   }
 
-  if (source === "analyze" || source === "download") {
+  if (source === "analyze") {
     if (computeLayer && map && map.hasLayer(computeLayer)) {
       map.removeLayer(computeLayer);
     }
   }
 
-  if (typeof clearResultBboxLayers === "function") {
-    clearResultBboxLayers();
+  // Clear the bbox layer for this source
+  if (typeof clearBboxLayerForSource === "function") {
+    clearBboxLayerForSource(source);
   }
-  if (typeof clearImagesBboxLayer === "function") {
-    clearImagesBboxLayer();
+  // Uncheck the bbox checkbox for this source
+  const bboxCheck = document.getElementById(source + "_bbox_layer");
+  if (bboxCheck) bboxCheck.checked = false;
+
+  // Also clear highlighted layer
+  if (typeof highlightedLayer !== "undefined" && highlightedLayer) {
+    highlightedLayer.clearLayers();
+  }
+  if (typeof map !== "undefined" && map) {
+    map.closePopup();
   }
 
   renderResultPayload(source, null);
   closeClearConfirmModal();
+  updateLayerCountSummary();
 }
 
 function clearResultSources() {
@@ -335,6 +394,11 @@ function clearResultSources() {
   if (switcher) {
     switcher.value = 'search';
   }
+  // Uncheck all per-source bbox checkboxes
+  ["search_bbox_layer", "analyze_bbox_layer", "download_bbox_layer"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
   if (typeof clearResultBboxLayers === "function") {
     clearResultBboxLayers();
   }
@@ -342,6 +406,7 @@ function clearResultSources() {
     clearImagesBboxLayer();
   }
   closeClearConfirmModal();
+  updateLayerCountSummary();
 }
 
 function openClearConfirmModal() {
@@ -399,6 +464,7 @@ window.clearResultSources = clearResultSources;
 window.clearActiveOutputLayer = clearActiveOutputLayer;
 window.openClearConfirmModal = openClearConfirmModal;
 window.closeClearConfirmModal = closeClearConfirmModal;
+window.updateLayerCountSummary = updateLayerCountSummary;
 
 function buildSearchRequestUrl(params) {
   const bbox = encodeURIComponent(params.bbox || "");

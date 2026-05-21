@@ -1,4 +1,4 @@
-var map = L.map("map").setView([28.202082, 83.987222], 10);
+var map = L.map("map").setView([28.202082, 83.957222], 15);
       // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       //   attribution:
       //     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -184,6 +184,8 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
       var highlightedLayer = L.layerGroup();
       var activeImagesBboxLayer = null;
       var activeImagesBboxSource = null;
+      // Per-source bbox layers
+      var sourceBboxLayers = { search: null, analyze: null, download: null };
       var clickedResultList = false;
       var previousListMouseIn;
       var export_params_bbox_changed = false;
@@ -253,10 +255,20 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
         }
         activeImagesBboxLayer = null;
         activeImagesBboxSource = null;
+        // Clear all per-source bbox layers
+        Object.keys(sourceBboxLayers).forEach(function(src) {
+          if (sourceBboxLayers[src] && map.hasLayer(sourceBboxLayers[src])) {
+            map.removeLayer(sourceBboxLayers[src]);
+          }
+          sourceBboxLayers[src] = null;
+        });
         if (highlightedLayer) {
           highlightedLayer.clearLayers();
         }
         map.closePopup();
+        if (typeof updateLayerCountSummary === "function") {
+          updateLayerCountSummary();
+        }
       }
 
       function clearImagesBboxLayer() {
@@ -319,19 +331,25 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
           return;
         }
 
-        const bboxEnabled = document.getElementById("search_bbox_layer")?.checked;
+        const bboxCheckId = source + "_bbox_layer";
+        const bboxEnabled = document.getElementById(bboxCheckId)?.checked;
         activeImagesBboxSource = source;
 
         if (!bboxEnabled) {
-          clearImagesBboxLayer();
+          // Only clear this source's layer
+          if (sourceBboxLayers[source] && map.hasLayer(sourceBboxLayers[source])) {
+            map.removeLayer(sourceBboxLayers[source]);
+          }
+          sourceBboxLayers[source] = null;
           return;
         }
 
         const nextLayer = buildSourceBboxLayer(source, payload);
-        if (activeImagesBboxLayer && map.hasLayer(activeImagesBboxLayer)) {
-          map.removeLayer(activeImagesBboxLayer);
+        // Remove only this source's previous layer
+        if (sourceBboxLayers[source] && map.hasLayer(sourceBboxLayers[source])) {
+          map.removeLayer(sourceBboxLayers[source]);
         }
-        activeImagesBboxLayer = nextLayer;
+        sourceBboxLayers[source] = nextLayer;
 
         if (nextLayer) {
           nextLayer.addTo(map);
@@ -340,12 +358,40 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
           }
         }
 
-        if (source !== "search" && geojsonLayer && map.hasLayer(geojsonLayer)) {
-          map.removeLayer(geojsonLayer);
+        if (typeof updateLayerCountSummary === "function") {
+          updateLayerCountSummary();
+        }
+      }
+
+      function syncResultBboxLayerForSource(source) {
+        const payload = typeof resultSourceState !== "undefined" ? resultSourceState[source] : null;
+        if (!payload) return;
+        const nextLayer = buildSourceBboxLayer(source, payload);
+        if (sourceBboxLayers[source] && map.hasLayer(sourceBboxLayers[source])) {
+          map.removeLayer(sourceBboxLayers[source]);
+        }
+        sourceBboxLayers[source] = nextLayer;
+        if (nextLayer) {
+          nextLayer.addTo(map);
+        }
+        if (typeof updateLayerCountSummary === "function") {
+          updateLayerCountSummary();
+        }
+      }
+
+      function clearBboxLayerForSource(source) {
+        if (sourceBboxLayers[source] && map.hasLayer(sourceBboxLayers[source])) {
+          map.removeLayer(sourceBboxLayers[source]);
+        }
+        sourceBboxLayers[source] = null;
+        if (typeof updateLayerCountSummary === "function") {
+          updateLayerCountSummary();
         }
       }
 
       window.syncResultBboxLayers = syncResultBboxLayers;
+      window.syncResultBboxLayerForSource = syncResultBboxLayerForSource;
+      window.clearBboxLayerForSource = clearBboxLayerForSource;
       window.clearResultBboxLayers = clearResultBboxLayers;
       window.clearImagesBboxLayer = clearImagesBboxLayer;
 
@@ -471,6 +517,9 @@ var map = L.map("map").setView([28.202082, 83.987222], 10);
 
         showLoaderOnMap(liveLayer, false);
         liveLayer.addTo(map);
+        if (typeof updateLayerCountSummary === "function") {
+          updateLayerCountSummary();
+        }
 
         fetchSearchResults({
           bbox: tile_params.bbox,

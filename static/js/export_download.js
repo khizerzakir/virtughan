@@ -20,16 +20,21 @@ downloading = false;
         document.getElementById("after-compute-buttons").classList.add("hidden");
         document.getElementById('compute_progress_text').style.color = 'white';
 
-        document.getElementById("layerSwitcherBox").classList.add("hidden");
-        var textCon =  "Please Wait Computing...";
-        var textTitl = "Computation Progress";
-        
-        if(!analyzeChecked){
-          textCon = "Please Wait Downloading...";
-          textTitl = "Download Progress";
+        if (analyzeChecked) {
+          document.getElementById("layerSwitcherBox").classList.add("hidden");
+          document.getElementById('ProgressTextsBefore').innerHTML = '<li style="font-size: 10px;">Please Wait Computing...</li>';
+          document.getElementById('computation_progress_text').innerHTML = "Computation Progress";
+          document.getElementById('compute_progressbar').style.display = '';
+          // Hide download progress (not download-complete, that's a finished result)
+          document.getElementById('download_progressbar').style.display = 'none';
+        } else {
+          document.getElementById('DownloadProgressTexts').innerHTML = '<li style="font-size: 10px;">Please Wait Downloading...</li>';
+          document.getElementById('download_computation_progress_text').innerHTML = "Download Progress";
+          document.getElementById('download_progressbar').style.display = '';
+          document.getElementById('download-complete').classList.add("hidden");
+          // Hide analyze progress (not layerSwitcherBox, that's a finished result)
+          document.getElementById('compute_progressbar').style.display = 'none';
         }
-        document.getElementById('ProgressTextsBefore').innerHTML = `<li style = "font-size: 10px;">${textCon}</li>`;
-        document.getElementById('computation_progress_text').innerHTML = textTitl;
         
 
         document.getElementById('operationImageView').src ="";
@@ -156,9 +161,14 @@ downloading = false;
         //Open Result Tab
         document.getElementById("resultTab").click();
         document.getElementById("layerSwitcherContainer").classList.remove("hidden");
-        document.getElementById("computeLayerSwitcher").classList.remove("hidden");
-
-        document.getElementById("download-complete").classList.add("hidden");
+        if (analyzeChecked) {
+          document.getElementById("computeLayerSwitcher").classList.remove("hidden");
+          document.getElementById("compute_progressbar").style.display = '';
+        } else {
+          document.getElementById("downloadLayerSwitcher").classList.remove("hidden");
+          document.getElementById("download-complete").classList.add("hidden");
+          document.getElementById("download_progressbar").style.display = '';
+        }
 
         //show the progress to the user
         
@@ -174,7 +184,7 @@ downloading = false;
             .then(response => response.text())
             .then(data => {
               // console.log('Success log:', data);
-              updateProgress(data);
+              updateProgress(data, analyzeChecked);
               if (data.includes('Processing completed.') || data.includes('100%')) {
                 clearInterval(intervalId);
                 console.log('Processing completed. Stopped checking.');
@@ -190,6 +200,7 @@ downloading = false;
                       }
                     }
                     else{
+                      document.getElementById("download_progressbar").style.display = 'none';
                       document.getElementById("download-complete").classList.remove("hidden");
                     }
 
@@ -203,23 +214,30 @@ downloading = false;
         }
 
         // Initial call to set progress to 0%
-        startProgressComputation('compute', 0);
+        if (analyzeChecked) {
+          startProgressComputation('compute', 0);
+        } else {
+          startProgressComputation('download', 0);
+        }
         
         // Start checking the processing status every 5 seconds
         const intervalId = setInterval(checkProcessingStatus, 5000);
 
-        function updateProgress(logData) {
+        function updateProgress(logData, isAnalyze) {
           if (logData.includes('No images found') || logData.includes('Filtered 0 items') || logData.includes('Scenes covering input area: 0')) {
               displayNoImageFoundMessage();
           } else {
+              const progressListId = isAnalyze ? 'ProgressTextsBefore' : 'DownloadProgressTexts';
+              const progressName = isAnalyze ? 'compute' : 'download';
+
               // Extract log lines
               const logLines = logData.split('\n');
               const nonComputationLogs = logLines.filter(line => !line.includes('Computing Band Calculation') && !line.includes('Extracting Bands'));
 
-              document.getElementById('ProgressTextsBefore').innerHTML = "";
+              document.getElementById(progressListId).innerHTML = "";
 
               // Get the progress list element
-              const progressTextsBefore = document.getElementById('ProgressTextsBefore');
+              const progressTextsBefore = document.getElementById(progressListId);
               // Get the existing list items text content
               const existingItems = Array.from(progressTextsBefore.getElementsByTagName('li')).map(item => item.textContent);
 
@@ -275,14 +293,15 @@ downloading = false;
               if (progressMatches) {
                   const lastProgress = progressMatches[progressMatches.length - 1];
                   const progress = parseInt(lastProgress.replace('%', ''), 10);
-                  startProgressComputation('compute', progress);
+                  startProgressComputation(progressName, progress);
               }
               // Scroll the progress list to the bottom 
               progressTextsBefore.scrollTop = progressTextsBefore.scrollHeight;
           }
         }
 
-        if (computeLayer) {
+        // Only remove compute layer if starting a new analyze (not download)
+        if (analyzeChecked && computeLayer) {
             map.removeLayer(computeLayer);
         }
 
@@ -376,6 +395,9 @@ downloading = false;
               map.addLayer(computeLayer);
               updateLegend(selectedPalette);
 
+              if (typeof updateLayerCountSummary === "function") {
+                updateLayerCountSummary();
+              }
 
               map.fitBounds(computeLayer.getBounds());
 
@@ -449,8 +471,12 @@ downloading = false;
             "geojsonLayer": geojsonLayer,
             "computeLayer": computeLayer
           };
+          // Add per-source bbox layers
+          if (typeof sourceBboxLayers !== "undefined") {
+            layers["analyzeBboxLayer"] = sourceBboxLayers.analyze;
+            layers["downloadBboxLayer"] = sourceBboxLayers.download;
+          }
           const layer = layers[layerName];
-          // console.log(layer);
           if (layer) {
               if (layer.setOpacity) {
                   // For raster layers (e.g., imageOverlay)
@@ -459,7 +485,6 @@ downloading = false;
                   // For vector layers (e.g., geoJSON)
                   layer.setStyle({ opacity: value / 100/*, fillOpacity: value / 100*/ });
               }
-              // console.log(`Setting transparency of ${layerName} to ${value}%`);
           } else {
               console.error(`Layer ${layerName} not found`);
           }
@@ -472,8 +497,13 @@ downloading = false;
             "geojsonLayer": geojsonLayer,
             "computeLayer": computeLayer
           };
+          // Add per-source bbox layers
+          if (typeof sourceBboxLayers !== "undefined") {
+            layers["analyzeBboxLayer"] = sourceBboxLayers.analyze;
+            layers["downloadBboxLayer"] = sourceBboxLayers.download;
+          }
           document.querySelectorAll('input[id^="transparency_"]').forEach(input => {
-              const layerName = input.id.split('_')[1];
+              const layerName = input.id.substring("transparency_".length);
               const layer = layers[layerName];
               if (layer) {
                   let transparencyValue = 100; // Default to 100% if no transparency is set
@@ -492,7 +522,7 @@ downloading = false;
       // Query all inputs with an ID starting with "transparency_"
       document.querySelectorAll('input[id^="transparency_"]').forEach(input => {
           input.addEventListener('input', function() {
-              const layerName = this.id.split('_')[1];
+              const layerName = this.id.substring("transparency_".length);
               const transparencyValue = this.value;
               setLayerTransparency(layerName, transparencyValue);
           });
