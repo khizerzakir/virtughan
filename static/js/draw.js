@@ -130,6 +130,7 @@ function updateDrawnItemBbox(layer){
 let activeDrawHandler = null;
 // Event listener for the drawstart event 
 map.on(L.Draw.Event.DRAWSTART, function (e) {  
+  if (typeof isMeasuring !== 'undefined' && isMeasuring) return;
   if (drawToolbar) {
     drawToolbar.style.display = 'block';
   }
@@ -137,6 +138,9 @@ map.on(L.Draw.Event.DRAWSTART, function (e) {
 
 // Event for creating new layers
 map.on(L.Draw.Event.CREATED, function (event) {
+    // Skip if this is a measure tool draw
+    if (typeof isMeasuring !== 'undefined' && isMeasuring) return;
+
     // Clear existing layers before adding the new layer
     drawnItems.clearLayers();
     if(rectangle){
