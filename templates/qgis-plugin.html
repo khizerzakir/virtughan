@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QGIS Plugin - virtughan</title>
+    <link rel="icon" href="static/img/virtughan-logo.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w==" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .custom-height-icon {
+            font-size: 2rem; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700">
+    <header class="bg-white shadow-md py-4 border-b border-gray-300">
+        <div class="container mx-auto flex items-center justify-between px-4 relative">
+          <div class="flex items-center">
+            <a href="/"><img src="static/img/virtughan-logo.png" alt="Logo" class="h-10 w-10 mr-2"></a>
+            <span class="text-xl font-bold text-gray-800">virtughan</span>
+          </div>
+          <div class="block md:hidden absolute right-4 top-4">
+            <button id="nav-toggle" class="text-gray-600 focus:outline-none">
+              <i class="fas fa-bars fa-2x"></i>
+            </button>
+          </div>
+          <nav id="nav-content" class="hidden md:flex space-x-8">
+            <a href="/" class="text-gray-600 hover:text-gray-900">Data</a>
+            <a href="/about" class="text-gray-600 hover:text-gray-900">About</a>
+            <a href="/qgis-plugin" class="text-gray-600 hover:text-gray-900 font-semibold">QGIS Plugin</a>
+            <a href="https://virtughan.github.io/virtughan/" target="_blank" class="text-gray-600 hover:text-gray-900">Docs</a>
+            <a href="https://github.com/virtughan/virtughan" target="_blank" class="text-gray-600 hover:text-gray-900">
+              <i class="fab fa-github custom-height-icon"></i>
+            </a>
+          </nav>
+        </div>
+        <div id="nav-content-mobile" class="hidden absolute top-16 right-0 max-w-sm bg-white space-y-2 py-2 px-4 z-50">
+          <a href="/" class="block text-gray-600 hover:text-gray-900">Data</a>
+          <a href="/about" class="block text-gray-600 hover:text-gray-900">About</a>
+          <a href="/qgis-plugin" class="block text-gray-600 hover:text-gray-900">QGIS Plugin</a>
+          <a href="https://github.com/virtughan/virtughan" target="_blank" class="block text-gray-600 hover:text-gray-900">
+            <i class="fab fa-github custom-height-icon"></i>
+          </a>
+        </div>
+    </header>
+
+    <div class="container mx-auto py-10">
+        <div class="bg-gray-50 p-8 w-full sm:w-full md:w-3/4 lg:w-2/3 xl:w-[70%] mx-auto">
+
+          <!-- Hero -->
+          <div class="text-center mb-8">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/QGIS_logo_new.svg" alt="QGIS Logo" class="h-16 mx-auto mb-4">
+            <h1 class="text-4xl font-bold mb-2">VirtuGhan QGIS Plugin</h1>
+            <p class="text-lg text-gray-500">Bring satellite computation directly into your QGIS desktop workflow.</p>
+          </div>
+
+          <!-- Intro -->
+          <div class="mb-8">
+            <p class="mb-4">The VirtuGhan QGIS Plugin integrates the full power of the <a href="https://pypi.org/project/virtughan/" target="_blank" class="text-blue-600">virtughan</a> Python package into QGIS. It allows you to visualize, compute, and download satellite imagery without leaving your GIS environment — no coding required.</p>
+            <p class="mb-4">Whether you need a quick NDVI preview, a time-series aggregation, or bulk band extraction, the plugin handles it through a simple panel interface connected to the same engine that powers <a href="https://virtughan.com" target="_blank" class="text-blue-600">virtughan.com</a>.</p>
+          </div>
+
+          <!-- Modules -->
+          <h2 class="text-2xl font-semibold mb-4">Modules</h2>
+
+          <div class="space-y-6 mb-10">
+            <!-- Tiler -->
+            <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h3 class="text-xl font-semibold mb-2"><i class="fas fa-map text-blue-500 mr-2"></i>Tiler</h3>
+              <p class="mb-2">Real-time satellite tile visualization with custom band combinations. Use it for a quick visual check before downloading data.</p>
+              <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                <li>Shows satellite imagery as map tiles directly in QGIS</li>
+                <li>Filter by area, date range, cloud cover, and band formula</li>
+                <li>Fast preview and comparison — no file downloads needed</li>
+              </ul>
+            </div>
+
+            <!-- Engine -->
+            <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h3 class="text-xl font-semibold mb-2"><i class="fas fa-cogs text-green-500 mr-2"></i>Engine (Compute)</h3>
+              <p class="mb-2">Process and analyze satellite imagery with spectral indices and time-series aggregation.</p>
+              <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                <li>Apply formulas like NDVI, NDWI, or custom band math expressions</li>
+                <li>Aggregate over time with operations: mean, median, max, min, std, sum, variance, mode</li>
+                <li>Optional time-series output with trend analysis</li>
+                <li>Results loaded directly as raster layers in QGIS</li>
+              </ul>
+            </div>
+
+            <!-- Extractor -->
+            <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h3 class="text-xl font-semibold mb-2"><i class="fas fa-download text-purple-500 mr-2"></i>Extractor (Download)</h3>
+              <p class="mb-2">Bulk download and stack satellite bands for your area of interest.</p>
+              <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                <li>Download selected Sentinel-2 or Landsat bands as GeoTIFF files</li>
+                <li>Automatic band stacking and resolution matching</li>
+                <li>Smart filtering to reduce redundant scene downloads</li>
+                <li>Output as GeoTIFF/VRT files, optionally zipped</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Installation -->
+          <h2 class="text-2xl font-semibold mb-4"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/QGIS_logo_new.svg" alt="QGIS" class="h-6 inline-block mr-2">Installation</h2>
+          <div class="mb-8">
+            <h3 class="text-lg font-medium mb-2">Prerequisites</h3>
+            <ul class="list-disc list-inside text-sm text-gray-600 mb-4">
+              <li>QGIS 3.22 or higher</li>
+              <li>Python 3.10+</li>
+              <li>Internet connection (for first-run dependency bootstrap)</li>
+            </ul>
+
+            <h3 class="text-lg font-medium mb-2">Steps</h3>
+            <ol class="list-decimal list-inside text-sm text-gray-600 space-y-2">
+              <li>Download the latest plugin ZIP from <a href="https://github.com/virtughan/qgis-plugin/releases" target="_blank" class="text-blue-600">GitHub Releases</a></li>
+              <li>In QGIS, go to <strong>Plugins → Manage and Install Plugins → Install from ZIP</strong></li>
+              <li>Select the downloaded <code class="bg-gray-100 px-1 rounded">virtughan-qgis-plugin.zip</code></li>
+              <li>The plugin auto-installs its Python dependencies on first run</li>
+            </ol>
+          </div>
+
+          <!-- How it works -->
+          <h2 class="text-2xl font-semibold mb-4">How It Works</h2>
+          <div class="mb-8">
+            <p class="mb-4 text-sm text-gray-600">The plugin uses the same computation engine as the web application. It accesses Cloud Optimized GeoTIFFs (COGs) from Sentinel-2 and Landsat collections via STAC APIs, performs band math and aggregation locally, and loads results directly into your QGIS project.</p>
+            <p class="text-sm text-gray-600">No data replication is needed — the plugin reads only the pixels it needs from remote COGs, computes on-the-fly, and delivers results as standard raster layers.</p>
+          </div>
+
+          <!-- Links -->
+          <h2 class="text-2xl font-semibold mb-4">Links</h2>
+          <div class="flex flex-wrap gap-4">
+            <a href="https://github.com/virtughan/qgis-plugin" target="_blank" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700">
+              <i class="fab fa-github mr-2"></i> Source Code
+            </a>
+            <a href="https://pypi.org/project/virtughan/" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500">
+              <i class="fas fa-cube mr-2"></i> PyPI Package
+            </a>
+            <a href="https://virtughan.github.io/virtughan/" target="_blank" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-500">
+              <i class="fas fa-book mr-2"></i> Documentation
+            </a>
+          </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-white border-t border-gray-300 py-6 mt-10">
+      <div class="container mx-auto px-4 text-center">
+        <p class="text-sm text-gray-500">Licensed under GPL-3.0 · <a href="https://github.com/virtughan" target="_blank" class="text-blue-600">github.com/virtughan</a></p>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('nav-toggle').addEventListener('click', () => {
+        const navContentMobile = document.getElementById('nav-content-mobile');
+        navContentMobile.classList.toggle('hidden');
+      });
+    </script>
+</body>
+</html>

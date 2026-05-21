@@ -290,6 +290,11 @@ async def read_about(request: Request):
     return templates.TemplateResponse(request, "about.html")
 
 
+@app.get("/qgis-plugin", response_class=HTMLResponse, tags=["frontend"], include_in_schema=False)
+async def read_qgis_plugin(request: Request):
+    return templates.TemplateResponse(request, "qgis-plugin.html")
+
+
 # endregion
 
 # region Monitoring
