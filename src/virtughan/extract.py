@@ -174,34 +174,32 @@ class ExtractProcessor:
                     for band_urls, feature in zip(band_urls_list, overlapping_features_removed)
                 ]
                 with Progress(console=self.console) as progress:
-                    task = progress.add_task("Extracting Bands", total=len(futures))
-                    processed = 0
                     total = len(futures)
-                    for future in as_completed(futures):
+                    task = progress.add_task("Extracting Bands", total=total)
+                    for index, future in enumerate(as_completed(futures), start=1):
                         result = future.result()
                         result_lists.append(result)
                         progress.advance(task)
-                        processed += 1
                         try:
-                            percent = int(processed / total * 100) if total else 100
+                            percent = int(index / total * 100) if total else 100
                         except Exception:
                             percent = 0
-                        self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
+                        self.console.print(f"PROGRESS: {percent}% | {index}/{total}")
         else:
             with Progress(console=self.console) as progress:
-                task = progress.add_task("Extracting Bands", total=len(band_urls_list))
-                processed = 0
                 total = len(band_urls_list)
-                for band_urls, feature in zip(band_urls_list, overlapping_features_removed):
+                task = progress.add_task("Extracting Bands", total=total)
+                for index, (band_urls, feature) in enumerate(
+                    zip(band_urls_list, overlapping_features_removed), start=1
+                ):
                     result = self._fetch_and_save_bands(band_urls, feature["id"])
                     result_lists.append(result)
                     progress.advance(task)
-                    processed += 1
                     try:
-                        percent = int(processed / total * 100) if total else 100
+                        percent = int(index / total * 100) if total else 100
                     except Exception:
                         percent = 0
-                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
+                    self.console.print(f"PROGRESS: {percent}% | {index}/{total}")
 
         if self.zip_output:
             valid_files = [f for f in result_lists if f is not None]

@@ -18,6 +18,7 @@ from scipy.stats import mode as scipy_mode
 
 from .band_math import evaluate_formula
 from .collections import get_collection
+from .formula import validate_formula
 from .geo import (
     calculate_window,
     is_window_out_of_bounds,
@@ -43,8 +44,7 @@ class VirtughanProcessor:
         end_date: str,
         cloud_cover: int,
         formula: str,
-        band1: str,
-        band2: str | None,
+        bands: list[str],
         operation: str,
         timeseries: bool,
         output_dir: str,
@@ -58,9 +58,8 @@ class VirtughanProcessor:
         self.start_date = start_date
         self.end_date = end_date
         self.cloud_cover = cloud_cover
-        self.formula = formula or "band1"
-        self.band1 = band1
-        self.band2 = band2
+        self.formula = formula
+        self.bands = list(bands)
         self.operation = operation
         self.timeseries = timeseries
         self.output_dir = output_dir
@@ -76,152 +75,118 @@ class VirtughanProcessor:
         self.use_smart_filter = smart_filter
         self.collection_config = get_collection(collection)
 
+        invalid = self.collection_config.validate_bands(self.bands)
+        if invalid:
+            raise ValueError(f"bands not in collection {collection}: {invalid}")
+        validate_formula(self.formula, self.bands)
+
     def fetch_process_custom_band(
-        self, band1_url: str, band2_url: str | None
+        self, band_urls: dict[str, str]
     ) -> tuple[np.ndarray | None, Any, Any, str | None]:
-        try:
-            with rio.open(band1_url) as band1_cog:
-                min_x, min_y, max_x, max_y = transform_bbox(self.bbox, band1_cog.crs)
-                band1_window = calculate_window(band1_cog, min_x, min_y, max_x, max_y)
+        arrays: dict[str, np.ndarray] = {}
+        transforms: dict[str, Any] = {}
+        crses: dict[str, Any] = {}
+        shapes: dict[str, tuple[int, int]] = {}
+        first_url: str | None = None
 
-                if is_window_out_of_bounds(band1_window):
+        for name, url in band_urls.items():
+            if first_url is None:
+                first_url = url
+            with rio.open(url) as cog:
+                min_x, min_y, max_x, max_y = transform_bbox(self.bbox, cog.crs)
+                window = calculate_window(cog, min_x, min_y, max_x, max_y)
+                if is_window_out_of_bounds(window):
                     return None, None, None, None
+                data = cog.read(window=window).astype(float)
+                arrays[name] = data
+                transforms[name] = cog.window_transform(window)
+                crses[name] = cog.crs
+                shapes[name] = (data.shape[1], data.shape[2])
 
-                band1_data = band1_cog.read(window=band1_window).astype(float)
-                band1_transform = band1_cog.window_transform(band1_window)
-                band1_height, band1_width = band1_data.shape[1], band1_data.shape[2]
+        reference = self._pick_reference_band(transforms)
+        arrays, ref_transform = self._align_to_reference(
+            arrays, transforms, crses, shapes, reference
+        )
 
-                if band2_url:
-                    with rio.open(band2_url) as band2_cog:
-                        min_x, min_y, max_x, max_y = transform_bbox(self.bbox, band2_cog.crs)
-                        band2_window = calculate_window(band2_cog, min_x, min_y, max_x, max_y)
+        result = evaluate_formula(self.formula, arrays)
+        return result, crses[reference], ref_transform, first_url
 
-                        if is_window_out_of_bounds(band2_window):
-                            return None, None, None, None
+    @staticmethod
+    def _pick_reference_band(transforms: dict[str, Any]) -> str:
+        return min(transforms, key=lambda name: transforms[name][0])
 
-                        band2_data = band2_cog.read(window=band2_window).astype(float)
-                        band2_transform = band2_cog.window_transform(band2_window)
-                        band2_height, band2_width = (
-                            band2_data.shape[1],
-                            band2_data.shape[2],
-                        )
+    @staticmethod
+    def _align_to_reference(
+        arrays: dict[str, np.ndarray],
+        transforms: dict[str, Any],
+        crses: dict[str, Any],
+        shapes: dict[str, tuple[int, int]],
+        reference: str,
+    ) -> tuple[dict[str, np.ndarray], Any]:
+        ref_array = arrays[reference]
+        ref_transform = transforms[reference]
+        ref_crs = crses[reference]
+        ref_height, ref_width = shapes[reference]
 
-                        band1_data, band2_data, current_transform = self._resample_bands(
-                            band1_data,
-                            band1_transform,
-                            band1_cog.crs,
-                            band1_height,
-                            band1_width,
-                            band2_data,
-                            band2_transform,
-                            band2_cog.crs,
-                            band2_height,
-                            band2_width,
-                        )
-
-                        result = evaluate_formula(
-                            self.formula, {"band1": band1_data, "band2": band2_data}
-                        )
-                else:
-                    if band1_data.shape[0] == 1:
-                        result = evaluate_formula(self.formula, {"band1": band1_data})
-                    else:
-                        result = band1_data
-                    current_transform = band1_transform
-
-            return result, band1_cog.crs, current_transform, band1_url
-
-        except Exception:
-            raise
-
-    def _resample_bands(
-        self,
-        band1_data: np.ndarray,
-        band1_transform: Any,
-        band1_crs: Any,
-        band1_height: int,
-        band1_width: int,
-        band2_data: np.ndarray,
-        band2_transform: Any,
-        band2_crs: Any,
-        band2_height: int,
-        band2_width: int,
-    ) -> tuple[np.ndarray, np.ndarray, Any]:
-        if band1_height == band2_height and band1_width == band2_width:
-            return band1_data, band2_data, band1_transform
-
-        band1_res = band1_transform[0]
-        band2_res = band2_transform[0]
-
-        if band1_res > band2_res:
-            resampled_band2 = np.zeros_like(band1_data)
-            resampled_band2, _ = reproject(
-                source=band2_data,
-                destination=resampled_band2,
-                src_transform=band2_transform,
-                src_crs=band2_crs,
-                dst_transform=band1_transform,
-                dst_crs=band1_crs,
+        aligned: dict[str, np.ndarray] = {}
+        for name, data in arrays.items():
+            if name == reference or shapes[name] == (ref_height, ref_width):
+                aligned[name] = data
+                continue
+            resampled = np.zeros_like(ref_array)
+            resampled, _ = reproject(
+                source=data,
+                destination=resampled,
+                src_transform=transforms[name],
+                src_crs=crses[name],
+                dst_transform=ref_transform,
+                dst_crs=ref_crs,
                 resampling=Resampling.bilinear,
-                dst_shape=(band1_height, band1_width),
+                dst_shape=(ref_height, ref_width),
             )
-            return band1_data, resampled_band2, band1_transform
-        else:
-            resampled_band1 = np.zeros_like(band2_data)
-            resampled_band1, _ = reproject(
-                source=band1_data,
-                destination=resampled_band1,
-                src_transform=band1_transform,
-                src_crs=band1_crs,
-                dst_transform=band2_transform,
-                dst_crs=band2_crs,
-                resampling=Resampling.bilinear,
-                dst_shape=(band2_height, band2_width),
-            )
-            return resampled_band1, band2_data, band2_transform
+            aligned[name] = resampled
+        return aligned, ref_transform
 
-    def _get_band_urls(self, features: list[dict[str, Any]]) -> tuple[list[str], list[str | None]]:
-        band1_urls = []
-        band2_urls: list[str | None] = []
+    def _get_band_urls(self, features: list[dict[str, Any]]) -> list[dict[str, str]]:
+        per_feature: list[dict[str, str]] = []
         for feature in features:
-            if self.band1 not in feature["assets"]:
+            if any(b not in feature["assets"] for b in self.bands):
                 continue
-            if self.band2 and self.band2 not in feature["assets"]:
-                continue
-            band1_urls.append(feature["assets"][self.band1]["href"])
-            band2_urls.append(feature["assets"][self.band2]["href"] if self.band2 else None)
-        return band1_urls, band2_urls
+            per_feature.append({b: feature["assets"][b]["href"] for b in self.bands})
+        return per_feature
 
     def _extract_date_from_feature(self, feature: dict[str, Any]) -> str:
         _, date = self.collection_config.tile_id_parser(feature["id"])
         return date
 
     def _process_images(self, features: list[dict[str, Any]]) -> None:
-        band1_urls, band2_urls = self._get_band_urls(features)
+        band_urls_per_feature = self._get_band_urls(features)
+        usable_features = [f for f in features if all(b in f["assets"] for b in self.bands)]
 
         if self.workers > 1:
             self.console.print("Using parallel processing...")
-            self._process_parallel(band1_urls, band2_urls, features)
+            self._process_parallel(band_urls_per_feature, usable_features)
         else:
-            self._process_sequential(band1_urls, band2_urls, features)
+            self._process_sequential(band_urls_per_feature, usable_features)
 
     def _process_parallel(
         self,
-        band1_urls: list[str],
-        band2_urls: list[str | None],
+        band_urls_per_feature: list[dict[str, str]],
         features: list[dict[str, Any]],
     ) -> None:
-        url_to_feature = {feature["assets"][self.band1]["href"]: feature for feature in features}
+        reference_band = self.bands[0]
+        url_to_feature = {
+            feature["assets"][reference_band]["href"]: feature for feature in features
+        }
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
             futures = [
-                executor.submit(self.fetch_process_custom_band, b1, b2)
-                for b1, b2 in zip(band1_urls, band2_urls)
+                executor.submit(self.fetch_process_custom_band, urls)
+                for urls in band_urls_per_feature
             ]
             with Progress(console=self.console) as progress:
-                task = progress.add_task("Computing Band Calculation", total=len(futures))
-                processed = 0
                 total = len(futures)
-                for future in as_completed(futures):
+                task = progress.add_task("Computing Band Calculation", total=total)
+                for index, future in enumerate(as_completed(futures), start=1):
                     result, crs, current_transform, name_url = future.result()
                     if result is not None:
                         self.result_list.append(result)
@@ -233,41 +198,28 @@ class VirtughanProcessor:
                         if self.timeseries:
                             self._save_intermediate_image(result, feature["id"])
                     progress.advance(task)
-                    processed += 1
-                    try:
-                        percent = int(processed / total * 100) if total else 100
-                    except Exception:
-                        percent = 0
-                    # Emit a stable, machine-parseable progress line in addition to rich output
-                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
+                    percent = int(index / total * 100) if total else 100
+                    self.console.print(f"PROGRESS: {percent}% | {index}/{total}")
 
     def _process_sequential(
         self,
-        band1_urls: list[str],
-        band2_urls: list[str | None],
+        band_urls_per_feature: list[dict[str, str]],
         features: list[dict[str, Any]],
     ) -> None:
-            with Progress(console=self.console) as progress:
-                task = progress.add_task("Computing Band Calculation", total=len(band1_urls))
-                processed = 0
-                total = len(band1_urls)
-                for band1_url, band2_url, feature in zip(band1_urls, band2_urls, features):
-                    result, self.crs, self.transform, _ = self.fetch_process_custom_band(
-                        band1_url, band2_url
-                    )
-                    if result is not None:
-                        self.result_list.append(result)
-                        date = self._extract_date_from_feature(feature)
-                        self.dates.append(date)
-                        if self.timeseries:
-                            self._save_intermediate_image(result, feature["id"])
-                    progress.advance(task)
-                    processed += 1
-                    try:
-                        percent = int(processed / total * 100) if total else 100
-                    except Exception:
-                        percent = 0
-                    self.console.print(f"PROGRESS: {percent}% | {processed}/{total}")
+        with Progress(console=self.console) as progress:
+            total = len(band_urls_per_feature)
+            task = progress.add_task("Computing Band Calculation", total=total)
+            for index, (urls, feature) in enumerate(zip(band_urls_per_feature, features), start=1):
+                result, self.crs, self.transform, _ = self.fetch_process_custom_band(urls)
+                if result is not None:
+                    self.result_list.append(result)
+                    date = self._extract_date_from_feature(feature)
+                    self.dates.append(date)
+                    if self.timeseries:
+                        self._save_intermediate_image(result, feature["id"])
+                progress.advance(task)
+                percent = int(index / total * 100) if total else 100
+                self.console.print(f"PROGRESS: {percent}% | {index}/{total}")
 
     def _save_intermediate_image(self, result: np.ndarray, image_name: str) -> None:
         output_file = os.path.join(self.output_dir, f"{image_name}_result.tif")
@@ -448,8 +400,6 @@ class VirtughanProcessor:
     def compute(self) -> None:
         self.console.print("[bold blue]Engine starting...[/bold blue]")
         os.makedirs(self.output_dir, exist_ok=True)
-        if not self.band1:
-            raise ValueError("Band1 is required")
 
         self.console.print("Searching STAC catalog...")
         features = self._search_and_filter()

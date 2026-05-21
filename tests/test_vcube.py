@@ -12,6 +12,7 @@ from virtughan.band_math import evaluate_formula
 from virtughan.collections import get_collection
 from virtughan.engine import VirtughanProcessor
 from virtughan.extract import ExtractProcessor
+from virtughan.formula import FormulaError, validate_formula
 from virtughan.stac import search_stac
 from virtughan.tile import TileProcessor
 
@@ -64,22 +65,78 @@ class TestBandMath:
     def test_ndvi_formula(self):
         nir = np.array([0.8, 0.6, 0.9])
         red = np.array([0.2, 0.3, 0.1])
-        result = evaluate_formula(
-            "(band2 - band1) / (band2 + band1)", {"band1": red, "band2": nir}
-        )
+        result = evaluate_formula("(nir - red) / (nir + red)", {"red": red, "nir": nir})
         expected = (nir - red) / (nir + red)
         np.testing.assert_allclose(result, expected)
 
     def test_single_band_formula(self):
         band = np.array([100.0, 200.0, 300.0])
-        result = evaluate_formula("band1 / 10000", {"band1": band})
+        result = evaluate_formula("red / 10000", {"red": band})
         np.testing.assert_allclose(result, band / 10000)
 
     def test_division_by_zero_no_crash(self):
         a = np.array([1.0, 0.0])
         b = np.array([0.0, 0.0])
-        result = evaluate_formula("band1 / band2", {"band1": a, "band2": b})
+        result = evaluate_formula("red / nir", {"red": a, "nir": b})
         assert result.shape == (2,)
+
+
+class TestFormulaValidator:
+    def test_happy_two_band(self):
+        required = validate_formula("(nir - red) / (nir + red)", ["red", "nir"])
+        assert required == {"red", "nir"}
+
+    def test_happy_four_band(self):
+        required = validate_formula(
+            "(nir - red) / (nir + red) + 0.1 * (swir22 - swir16)",
+            ["red", "nir", "swir16", "swir22"],
+        )
+        assert required == {"red", "nir", "swir16", "swir22"}
+
+    def test_builtins_not_treated_as_bands(self):
+        required = validate_formula("where(nir > 0, log(nir / red), 0)", ["red", "nir"])
+        assert required == {"red", "nir"}
+
+    def test_missing_band_rejected(self):
+        with pytest.raises(FormulaError, match="unknown band"):
+            validate_formula("(nir - red) / swir16", ["red", "nir"])
+
+    def test_extra_band_rejected(self):
+        with pytest.raises(FormulaError, match="not used by formula"):
+            validate_formula("(nir - red) / (nir + red)", ["red", "nir", "blue"])
+
+    def test_duplicate_band_rejected(self):
+        with pytest.raises(FormulaError, match="duplicate"):
+            validate_formula("red + nir", ["red", "red", "nir"])
+
+    def test_syntax_error_rejected(self):
+        with pytest.raises(FormulaError, match="invalid formula"):
+            validate_formula("(nir - red /", ["red", "nir"])
+
+    def test_attribute_access_rejected(self):
+        with pytest.raises(FormulaError, match="forbidden control characters"):
+            validate_formula("nir.__class__", ["nir"])
+
+    def test_import_attempt_rejected(self):
+        with pytest.raises(FormulaError, match="forbidden control characters"):
+            validate_formula('__import__("os")', ["nir"])
+
+    def test_empty_formula_rejected(self):
+        with pytest.raises(FormulaError, match="must not be empty"):
+            validate_formula("", ["nir"])
+
+    def test_whitespace_formula_rejected(self):
+        with pytest.raises(FormulaError, match="must not be empty"):
+            validate_formula("   ", ["nir"])
+
+    def test_empty_bands_rejected(self):
+        with pytest.raises(FormulaError, match="must not be empty"):
+            validate_formula("1 + 1", [])
+
+    def test_too_many_bands_rejected(self):
+        many = [f"b{i}" for i in range(15)]
+        with pytest.raises(FormulaError, match="maximum"):
+            validate_formula("+".join(many), many)
 
 
 # ---- Integration Tests: STAC search ----
@@ -129,9 +186,8 @@ def sentinel2_engine_result():
         start_date=SENTINEL2_START,
         end_date=SENTINEL2_END,
         cloud_cover=30,
-        formula="(band2 - band1) / (band2 + band1)",
-        band1="red",
-        band2="nir",
+        formula="(nir - red) / (nir + red)",
+        bands=["red", "nir"],
         operation="median",
         timeseries=False,
         output_dir=OUTPUT_ENGINE_S2,
@@ -153,9 +209,8 @@ def landsat_engine_result():
         start_date=LANDSAT_START,
         end_date=LANDSAT_END,
         cloud_cover=30,
-        formula="(band2 - band1) / (band2 + band1)",
-        band1="red",
-        band2="nir08",
+        formula="(nir08 - red) / (nir08 + red)",
+        bands=["red", "nir08"],
         operation="median",
         timeseries=False,
         output_dir=OUTPUT_ENGINE_LS,
@@ -332,9 +387,8 @@ class TestTileSentinel2:
             start_date="2024-01-01",
             end_date="2025-01-01",
             cloud_cover=30,
-            band1="red",
-            band2="nir",
-            formula="(band2 - band1) / (band2 + band1)",
+            bands=("red", "nir"),
+            formula="(nir - red) / (nir + red)",
             colormap_str="RdYlGn",
             collection="sentinel-2-l2a",
         )
@@ -351,9 +405,8 @@ class TestTileSentinel2:
             start_date="2024-01-01",
             end_date="2025-01-01",
             cloud_cover=30,
-            band1="red",
-            band2="nir08",
-            formula="(band2 - band1) / (band2 + band1)",
+            bands=("red", "nir08"),
+            formula="(nir08 - red) / (nir08 + red)",
             colormap_str="RdYlGn",
             collection="landsat-c2-l2",
         )

@@ -20,8 +20,6 @@ def _parse_landsat_tile_id(item_id: str) -> tuple[str, str]:
 
 @dataclass(frozen=True)
 class BandInfo:
-    asset_key: str
-    common_name: str
     resolution: int
 
 
@@ -47,33 +45,33 @@ EARTH_SEARCH_URL = "https://earth-search.aws.element84.com/v1"
 PLANETARY_COMPUTER_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 
 SENTINEL2_BANDS = {
-    "red": BandInfo("red", "red", 10),
-    "green": BandInfo("green", "green", 10),
-    "blue": BandInfo("blue", "blue", 10),
-    "nir": BandInfo("nir", "nir", 10),
-    "swir22": BandInfo("swir22", "swir22", 20),
-    "rededge2": BandInfo("rededge2", "rededge", 20),
-    "rededge3": BandInfo("rededge3", "rededge", 20),
-    "rededge1": BandInfo("rededge1", "rededge", 20),
-    "swir16": BandInfo("swir16", "swir16", 20),
-    "wvp": BandInfo("wvp", "wvp", 20),
-    "nir08": BandInfo("nir08", "nir08", 20),
-    "aot": BandInfo("aot", "aot", 20),
-    "coastal": BandInfo("coastal", "coastal", 60),
-    "nir09": BandInfo("nir09", "nir09", 60),
-    "scl": BandInfo("scl", "scl", 20),
-    "visual": BandInfo("visual", "visual", 10),
+    "red": BandInfo(10),
+    "green": BandInfo(10),
+    "blue": BandInfo(10),
+    "nir": BandInfo(10),
+    "swir22": BandInfo(20),
+    "rededge2": BandInfo(20),
+    "rededge3": BandInfo(20),
+    "rededge1": BandInfo(20),
+    "swir16": BandInfo(20),
+    "wvp": BandInfo(20),
+    "nir08": BandInfo(20),
+    "aot": BandInfo(20),
+    "coastal": BandInfo(60),
+    "nir09": BandInfo(60),
+    "scl": BandInfo(20),
+    "visual": BandInfo(10),
 }
 
 LANDSAT_BANDS = {
-    "red": BandInfo("red", "red", 30),
-    "green": BandInfo("green", "green", 30),
-    "blue": BandInfo("blue", "blue", 30),
-    "nir08": BandInfo("nir08", "nir08", 30),
-    "swir16": BandInfo("swir16", "swir16", 30),
-    "swir22": BandInfo("swir22", "swir22", 30),
-    "coastal": BandInfo("coastal", "coastal", 30),
-    "lwir11": BandInfo("lwir11", "lwir11", 100),
+    "red": BandInfo(30),
+    "green": BandInfo(30),
+    "blue": BandInfo(30),
+    "nir08": BandInfo(30),
+    "swir16": BandInfo(30),
+    "swir22": BandInfo(30),
+    "coastal": BandInfo(30),
+    "lwir11": BandInfo(100),
 }
 
 
