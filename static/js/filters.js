@@ -22,12 +22,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 })
 
 document
-  .getElementById("sidebar-clear-button")
+  .getElementById("output-layer-clear-button")
   .addEventListener("click", function () {
-    clearResultSources();
-
-    document.getElementById("search-clear-button").click();
-    document.getElementById("export-clear-button").click();
+    if (typeof openClearConfirmModal === "function") {
+      openClearConfirmModal();
+    }
   });
 
 document

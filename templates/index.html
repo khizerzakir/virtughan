@@ -655,10 +655,6 @@
                   </div> 
                 </div>              
                 <div class="pt-2 space-y-2">
-                  <div class="flex items-center justify-between gap-3">
-                    <label id="display-image-count" class="block font-medium text-gray-900">Images: <span class="text-xs"></span></label>
-                    <span id="sidebar-clear-button" class="clear-visualize-filter text-gray-500 text-xs whitespace-nowrap"><i class="fa-solid fa-rotate-right"></i> Clear</span>
-                  </div>
                   <div class="flex flex-col gap-2 rounded-md bg-gray-50 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <span id="result-active-source" class="text-xs text-gray-500">Active result: None</span>
                     <select id="result-source-switcher" class="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-36">
@@ -666,6 +662,10 @@
                       <option value="analyze">Analyze</option>
                       <option value="download">Download</option>
                     </select>
+                  </div>
+                  <div id="output-layer-toolbar" class="flex items-center justify-between gap-3">
+                    <label id="display-image-count" class="block font-medium text-gray-900">Images: <span class="text-xs"></span></label>
+                    <button id="output-layer-clear-button" type="button" class="clear-visualize-filter text-gray-500 text-xs whitespace-nowrap"><i class="fa-solid fa-rotate-right"></i> Clear</button>
                   </div>
                 </div>
                 <div id="feature-list" style = "min-height: 100px; max-height: 450px;">
@@ -1208,6 +1208,17 @@
     </div>
   </div>
    <!-- Result and timeslider modal end -->
+
+  <div id="clear-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      <h3 id="clear-confirm-title" class="text-lg font-semibold text-gray-900">Clear results?</h3>
+      <p id="clear-confirm-message" class="mt-2 text-sm text-gray-600">Are you sure you want to clear the current results?</p>
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button id="clear-confirm-cancel" type="button" class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button id="clear-confirm-accept" type="button" class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">Clear</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 

@@ -29,11 +29,12 @@ function getImagesBboxLabel(source) {
   return "Images Bbox";
 }
 
-function updateImagesBboxLabel(source) {
-  const label = document.getElementById("images_bbox_label");
-  if (label) {
-    label.textContent = getImagesBboxLabel(source);
-  }
+function getClearModalTitle(source) {
+  return `Clear ${getResultSourceLabel(source)} results?`;
+}
+
+function getClearModalMessage(source) {
+  return `Are you sure you want to clear the ${getResultSourceLabel(source)} results?`;
 }
 
 function getResultContainer() {
@@ -50,6 +51,53 @@ function getResultActiveLabel() {
 
 function getResultSwitcher() {
   return document.getElementById("result-source-switcher");
+}
+
+function getClearModal() {
+  return document.getElementById("clear-confirm-modal");
+}
+
+function getClearModalTitleLabel() {
+  return document.getElementById("clear-confirm-title");
+}
+
+function getClearModalMessageLabel() {
+  return document.getElementById("clear-confirm-message");
+}
+
+function updateImagesBboxLabel(source) {
+  const label = document.getElementById("images_bbox_label");
+  if (label) {
+    label.textContent = getImagesBboxLabel(source);
+  }
+}
+
+function updateLayerSectionsForSource(source, hasResults) {
+  const layerSwitcherContainer = document.getElementById("layerSwitcherContainer");
+  const searchLayerSwitcher = document.getElementById("searchLayerSwitcher");
+  const searchBboxLayerSwitcher = document.getElementById("searchBboxLayerSwitcher");
+  const computeLayerSwitcher = document.getElementById("computeLayerSwitcher");
+  const downloadComplete = document.getElementById("download-complete");
+
+  const showSearchLayers = source === "search" && hasResults;
+  const showAnalyzeLayers = source === "analyze" && hasResults;
+  const showDownloadLayers = source === "download" && hasResults;
+
+  if (layerSwitcherContainer) {
+    layerSwitcherContainer.classList.toggle("hidden", !hasResults);
+  }
+  if (searchLayerSwitcher) {
+    searchLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
+  }
+  if (searchBboxLayerSwitcher) {
+    searchBboxLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
+  }
+  if (computeLayerSwitcher) {
+    computeLayerSwitcher.classList.toggle("hidden", !showAnalyzeLayers);
+  }
+  if (downloadComplete) {
+    downloadComplete.classList.toggle("hidden", !showDownloadLayers);
+  }
 }
 
 function normalizeItems(payload) {
@@ -85,7 +133,7 @@ function renderSceneList(items) {
     .join("");
 }
 
-function wireSceneResultInteractions(items, source) {
+function wireSceneResultInteractions(items) {
   const listItems = document.querySelectorAll(".result-list-items");
   listItems.forEach((element, index) => {
     const feature = items[index];
@@ -163,18 +211,20 @@ function renderResultPayload(source, payload) {
   const countLabel = getResultCountLabel();
   const activeLabel = getResultActiveLabel();
   const items = normalizeItems(payload);
+  const hasResults = Boolean(payload && items.length > 0);
 
   if (!container || !countLabel) {
     return;
   }
 
-  if (!payload || items.length === 0) {
+  if (!hasResults) {
     container.innerHTML = '<label class="block text-sm font-medium text-gray-400 pt-4">No results available yet.</label>';
     countLabel.innerHTML = 'Images: <span class="text-xs">0</span>';
     if (activeLabel) {
       activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
     }
     updateImagesBboxLabel(source);
+    updateLayerSectionsForSource(source, false);
     if (typeof clearResultBboxLayers === "function") {
       clearResultBboxLayers();
     }
@@ -188,6 +238,7 @@ function renderResultPayload(source, payload) {
     activeLabel.textContent = `Active result: ${getResultSourceLabel(source)}`;
   }
   updateImagesBboxLabel(source);
+  updateLayerSectionsForSource(source, true);
   if (payload.kind !== "files") {
     wireSceneResultInteractions(items, source);
   }
@@ -231,6 +282,36 @@ function setResultSource(source, payload) {
   }
 }
 
+function clearActiveOutputLayer() {
+  const source = activeResultSource || getResultSwitcher()?.value || "search";
+  resultSourceState[source] = null;
+
+  if (source === "search") {
+    if (geojsonLayer && map && map.hasLayer(geojsonLayer)) {
+      map.removeLayer(geojsonLayer);
+    }
+    if (liveLayer && map && map.hasLayer(liveLayer)) {
+      map.removeLayer(liveLayer);
+    }
+  }
+
+  if (source === "analyze" || source === "download") {
+    if (computeLayer && map && map.hasLayer(computeLayer)) {
+      map.removeLayer(computeLayer);
+    }
+  }
+
+  if (typeof clearResultBboxLayers === "function") {
+    clearResultBboxLayers();
+  }
+  if (typeof clearImagesBboxLayer === "function") {
+    clearImagesBboxLayer();
+  }
+
+  renderResultPayload(source, null);
+  closeClearConfirmModal();
+}
+
 function clearResultSources() {
   resultSourceState.search = null;
   resultSourceState.analyze = null;
@@ -250,11 +331,39 @@ function clearResultSources() {
     activeLabel.textContent = 'Active result: None';
   }
   updateImagesBboxLabel(null);
+  updateLayerSectionsForSource(null, false);
   if (switcher) {
     switcher.value = 'search';
   }
   if (typeof clearResultBboxLayers === "function") {
     clearResultBboxLayers();
+  }
+  if (typeof clearImagesBboxLayer === "function") {
+    clearImagesBboxLayer();
+  }
+  closeClearConfirmModal();
+}
+
+function openClearConfirmModal() {
+  const source = activeResultSource || getResultSwitcher()?.value || "search";
+  const modal = getClearModal();
+  const title = getClearModalTitleLabel();
+  const message = getClearModalMessageLabel();
+  if (title) {
+    title.textContent = getClearModalTitle(source);
+  }
+  if (message) {
+    message.textContent = getClearModalMessage(source);
+  }
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+}
+
+function closeClearConfirmModal() {
+  const modal = getClearModal();
+  if (modal) {
+    modal.classList.add("hidden");
   }
 }
 
@@ -265,6 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
       setActiveResultSource(event.target.value);
     });
   }
+
+  const clearCancel = document.getElementById("clear-confirm-cancel");
+  const clearAccept = document.getElementById("clear-confirm-accept");
+  if (clearCancel) {
+    clearCancel.addEventListener("click", closeClearConfirmModal);
+  }
+  if (clearAccept) {
+    clearAccept.addEventListener("click", clearActiveOutputLayer);
+  }
+
   if (!activeResultSource) {
     const activeLabel = getResultActiveLabel();
     if (activeLabel) {
@@ -277,7 +396,9 @@ window.setResultSource = setResultSource;
 window.setActiveResultSource = setActiveResultSource;
 window.refreshActiveResult = refreshActiveResult;
 window.clearResultSources = clearResultSources;
-window.refreshActiveResult = refreshActiveResult;
+window.clearActiveOutputLayer = clearActiveOutputLayer;
+window.openClearConfirmModal = openClearConfirmModal;
+window.closeClearConfirmModal = closeClearConfirmModal;
 
 function buildSearchRequestUrl(params) {
   const bbox = encodeURIComponent(params.bbox || "");
