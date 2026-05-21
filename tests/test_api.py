@@ -698,6 +698,66 @@ class TestExportEndpoint:
         )
         assert response.status_code == 201
 
+    def test_export_mode_on_non_s1_rejected(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "red,nir",
+                "formula": "(nir - red) / (nir + red)",
+                "collection": SENTINEL2_COLLECTION,
+                "mode": "IW",
+            },
+        )
+        assert response.status_code == 400
+        assert "sentinel-1-rtc" in response.json()["detail"]
+
+    def test_export_mode_invalid_value_rejected(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "bands": "vv,vh",
+                "formula": "10 * log10(vv / vh)",
+                "collection": "sentinel-1-rtc",
+                "mode": "XYZ",
+            },
+        )
+        assert response.status_code == 400
+        assert "Invalid mode" in response.json()["detail"]
+
+    def test_export_sentinel1_iw_accepted(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "start_date": "2025-01-01",
+                "end_date": "2025-01-20",
+                "bands": "vv,vh",
+                "formula": "10 * log10(vv / vh)",
+                "timeseries": True,
+                "collection": "sentinel-1-rtc",
+                "mode": "IW",
+            },
+        )
+        assert response.status_code == 201
+        assert "uid" in response.json()
+
+    def test_export_sentinel1_no_cloud_cover_required(self):
+        response = client.get(
+            "/export",
+            params={
+                "bbox": NEPAL_BBOX,
+                "start_date": "2025-01-01",
+                "end_date": "2025-01-20",
+                "bands": "vv",
+                "formula": "vv",
+                "timeseries": True,
+                "collection": "sentinel-1-rtc",
+            },
+        )
+        assert response.status_code == 201
+
 
 class TestImageDownloadEndpoint:
     def test_sentinel2_download_starts(self):

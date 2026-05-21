@@ -28,7 +28,7 @@ from slowapi.util import get_remote_address
 from starlette.requests import Request
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT
 
-from src.virtughan.collections import COLLECTIONS, get_collection
+from src.virtughan.collections import COLLECTIONS, SENTINEL1_MODES, get_collection
 from src.virtughan.engine import VirtughanProcessor
 from src.virtughan.extract import ExtractProcessor
 from src.virtughan.formula import FormulaError, validate_formula
@@ -193,6 +193,22 @@ def _validate_formula_request(collection: str, formula: str, bands_str: str) -> 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return bands
+
+
+def _validate_mode(collection: str, mode: str | None) -> dict[str, Any] | None:
+    if mode is None:
+        return None
+    if collection != "sentinel-1-rtc":
+        raise HTTPException(
+            status_code=400,
+            detail="mode filter only applies to sentinel-1-rtc",
+        )
+    if mode not in SENTINEL1_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid mode '{mode}'. Choose from: {sorted(SENTINEL1_MODES)}",
+        )
+    return {"sar:instrument_mode": {"eq": mode}}
 
 
 # endregion
@@ -423,6 +439,12 @@ async def compute_aoi_over_time(
     timeseries: bool = Query(True, description="Generate timeseries"),
     smart_filter: bool = Query(False, alias="smart_filters", description="Apply smart filter"),
     collection: str = Query("sentinel-2-l2a", description="Satellite collection"),
+    mode: str | None = Query(
+        None,
+        description=(
+            "Sentinel-1 acquisition mode (IW, EW, SM, WV). Only valid for sentinel-1-rtc."
+        ),
+    ),
 ):
     if not timeseries and operation is None:
         raise HTTPException(status_code=400, detail="Operation is required when timeseries=false")
@@ -435,6 +457,7 @@ async def compute_aoi_over_time(
     bbox_coords = _parse_bbox(bbox)
     start_date, end_date = _validate_dates(start_date, end_date)
     bands_list = _validate_formula_request(collection, formula, bands)
+    extra_query = _validate_mode(collection, mode)
 
     uid = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + str(uuid.uuid4())[:6]
     output_dir = os.path.join(STATIC_EXPORT_DIR, uid)
@@ -456,6 +479,7 @@ async def compute_aoi_over_time(
         smart_filter,
         collection,
         uid,
+        extra_query,
     )
     return JSONResponse(
         content={"message": f"Processing started in background: {output_dir}", "uid": uid},
@@ -479,11 +503,18 @@ async def get_tile(
     operation: str = Query("median", description="Aggregation operation"),
     timeseries: bool = Query(False, description="Analyze timeseries"),
     collection: str = Query("sentinel-2-l2a", description="Satellite collection"),
+    mode: str | None = Query(
+        None,
+        description=(
+            "Sentinel-1 acquisition mode (IW, EW, SM, WV). Only valid for sentinel-1-rtc."
+        ),
+    ),
 ):
     if z < 10 or z > 23:
         raise HTTPException(status_code=400, detail="Zoom level must be between 10 and 23")
 
     bands_list = _validate_formula_request(collection, formula, bands)
+    _validate_mode(collection, mode)
 
     if not start_date:
         start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -506,6 +537,7 @@ async def get_tile(
             operation=operation,
             latest=(timeseries is False),
             collection=collection,
+            mode=mode,
         )
         computation_time = time.time() - start_time
 
@@ -705,6 +737,7 @@ async def _run_computation(
     smart_filter: bool,
     collection: str,
     uid: str,
+    extra_query: dict[str, Any] | None = None,
 ) -> None:
     log_file_path = os.path.join(output_dir, "runtime.log")
 
@@ -726,6 +759,7 @@ async def _run_computation(
                     log_file=f,
                     smart_filter=smart_filter,
                     collection=collection,
+                    extra_query=extra_query,
                 )
                 processor.compute()
                 console.print(f"Processing completed. Results saved in {output_dir}")

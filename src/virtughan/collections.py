@@ -2,20 +2,34 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 
-def _parse_sentinel2_tile_id(item_id: str) -> tuple[str, str]:
-    parts = item_id.split("_")
+def _parse_sentinel2_tile_id(feature: dict[str, Any]) -> tuple[str, str]:
+    parts = feature["id"].split("_")
     zone = parts[1][:2]
     date = parts[2]
     return zone, date
 
 
-def _parse_landsat_tile_id(item_id: str) -> tuple[str, str]:
-    parts = item_id.split("_")
+def _parse_landsat_tile_id(feature: dict[str, Any]) -> tuple[str, str]:
+    parts = feature["id"].split("_")
     path_row = parts[2]
     date = parts[3]
     return path_row, date
+
+
+def _parse_sentinel1_tile_id(feature: dict[str, Any]) -> tuple[str, str]:
+    parts = feature["id"].split("_")
+    date = parts[4][:8]
+    properties = feature.get("properties", {})
+    relative_orbit = properties.get("sat:relative_orbit", parts[6])
+    orbit_state = properties.get("sat:orbit_state", "unknown")
+    grid = f"{relative_orbit}_{orbit_state[:1]}"
+    return grid, date
+
+
+SENTINEL1_MODES = frozenset(["IW", "EW", "SM", "WV"])
 
 
 @dataclass(frozen=True)
@@ -29,7 +43,7 @@ class CollectionConfig:
     catalog_url: str
     bands: dict[str, BandInfo]
     cloud_cover_property: str | None
-    tile_id_parser: Callable[[str], tuple[str, str]]
+    tile_id_parser: Callable[[dict[str, Any]], tuple[str, str]]
     url_signer: Callable[[str], str] | None = None
     stac_query_fields: dict[str, dict[str, int]] = field(default_factory=dict)
 
@@ -74,6 +88,13 @@ LANDSAT_BANDS = {
     "lwir11": BandInfo(100),
 }
 
+SENTINEL1_BANDS = {
+    "vv": BandInfo(10),
+    "vh": BandInfo(10),
+    "hh": BandInfo(10),
+    "hv": BandInfo(10),
+}
+
 
 def _sign_planetary_computer_url(url: str) -> str:
     import planetary_computer
@@ -95,6 +116,14 @@ COLLECTIONS: dict[str, CollectionConfig] = {
         bands=LANDSAT_BANDS,
         cloud_cover_property="eo:cloud_cover",
         tile_id_parser=_parse_landsat_tile_id,
+        url_signer=_sign_planetary_computer_url,
+    ),
+    "sentinel-1-rtc": CollectionConfig(
+        collection_id="sentinel-1-rtc",
+        catalog_url=PLANETARY_COMPUTER_URL,
+        bands=SENTINEL1_BANDS,
+        cloud_cover_property=None,
+        tile_id_parser=_parse_sentinel1_tile_id,
         url_signer=_sign_planetary_computer_url,
     ),
 }

@@ -10,6 +10,19 @@ from pystac_client import Client
 from .collections import CollectionConfig
 
 
+def _build_query(
+    config: CollectionConfig,
+    cloud_cover: int | None,
+    extra_query: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    query: dict[str, Any] = {}
+    if cloud_cover is not None and config.cloud_cover_property:
+        query[config.cloud_cover_property] = {"lt": cloud_cover}
+    if extra_query:
+        query.update(extra_query)
+    return query or None
+
+
 def search_stac(
     config: CollectionConfig,
     bbox: list[float],
@@ -17,17 +30,14 @@ def search_stac(
     end_date: str,
     cloud_cover: int | None = None,
     max_items: int | None = None,
+    extra_query: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     client = Client.open(config.catalog_url)
-    query_params: dict[str, Any] = {}
-    if cloud_cover is not None and config.cloud_cover_property:
-        query_params[config.cloud_cover_property] = {"lt": cloud_cover}
-
     search = client.search(
         collections=[config.collection_id],
         bbox=bbox,
         datetime=f"{start_date}T00:00:00Z/{end_date}T23:59:59Z",
-        query=query_params if query_params else None,
+        query=_build_query(config, cloud_cover, extra_query),
         max_items=max_items,
         sortby=[{"field": "properties.datetime", "direction": "desc"}],
     )
@@ -41,6 +51,7 @@ async def search_stac_async(
     end_date: str,
     cloud_cover: int | None = None,
     max_items: int | None = None,
+    extra_query: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     return await asyncio.to_thread(
         _search_stac_intersects_sync,
@@ -50,6 +61,7 @@ async def search_stac_async(
         end_date,
         cloud_cover,
         max_items,
+        extra_query,
     )
 
 
@@ -60,17 +72,14 @@ def _search_stac_intersects_sync(
     end_date: str,
     cloud_cover: int | None = None,
     max_items: int | None = None,
+    extra_query: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     client = Client.open(config.catalog_url)
-    query_params: dict[str, Any] = {}
-    if cloud_cover is not None and config.cloud_cover_property:
-        query_params[config.cloud_cover_property] = {"lt": cloud_cover}
-
     search = client.search(
         collections=[config.collection_id],
         intersects=bbox_geojson,
         datetime=f"{start_date}T00:00:00Z/{end_date}T23:59:59Z",
-        query=query_params if query_params else None,
+        query=_build_query(config, cloud_cover, extra_query),
         max_items=max_items,
         sortby=[{"field": "properties.datetime", "direction": "desc"}],
     )

@@ -57,6 +57,40 @@ class TestCollections:
         invalid = config.validate_bands(["red", "green", "blue"])
         assert invalid == []
 
+    def test_get_sentinel1_collection(self):
+        config = get_collection("sentinel-1-rtc")
+        assert config.collection_id == "sentinel-1-rtc"
+        assert set(config.bands) == {"vv", "vh", "hh", "hv"}
+        assert config.cloud_cover_property is None
+        assert config.url_signer is not None
+
+    def test_sentinel1_parser_includes_orbit_state(self):
+        config = get_collection("sentinel-1-rtc")
+        ascending_feature = {
+            "id": "S1A_IW_GRDH_1SDV_20250115T123042_20250115T123107_057455_0712EF_rtc",
+            "properties": {"sat:orbit_state": "ascending", "sat:relative_orbit": 158},
+        }
+        descending_feature = {
+            "id": "S1A_IW_GRDH_1SDV_20250115T123042_20250115T123107_057455_0712EF_rtc",
+            "properties": {"sat:orbit_state": "descending", "sat:relative_orbit": 158},
+        }
+        asc_grid, asc_date = config.tile_id_parser(ascending_feature)
+        desc_grid, desc_date = config.tile_id_parser(descending_feature)
+        assert asc_date == "20250115"
+        assert desc_date == "20250115"
+        assert asc_grid != desc_grid
+        assert asc_grid.endswith("_a")
+        assert desc_grid.endswith("_d")
+
+    def test_parsers_accept_feature_dict(self):
+        s2_feature = {"id": "S2A_44RQS_20241215_0_L2A", "properties": {}}
+        ls_feature = {"id": "LC09_L2SP_142040_20240608_02_T1", "properties": {}}
+        assert get_collection("sentinel-2-l2a").tile_id_parser(s2_feature) == ("44", "20241215")
+        assert get_collection("landsat-c2-l2").tile_id_parser(ls_feature) == (
+            "142040",
+            "20240608",
+        )
+
 
 # ---- Unit Tests: band_math ----
 
@@ -137,6 +171,10 @@ class TestFormulaValidator:
         many = [f"b{i}" for i in range(15)]
         with pytest.raises(FormulaError, match="maximum"):
             validate_formula("+".join(many), many)
+
+    def test_sentinel1_vv_vh_ratio(self):
+        required = validate_formula("10 * log10(vv / vh)", ["vv", "vh"])
+        assert required == {"vv", "vh"}
 
 
 # ---- Integration Tests: STAC search ----

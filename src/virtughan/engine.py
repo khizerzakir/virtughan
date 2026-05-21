@@ -53,6 +53,7 @@ class VirtughanProcessor:
         workers: int = 1,
         smart_filter: bool = True,
         collection: str = "sentinel-2-l2a",
+        extra_query: dict[str, Any] | None = None,
     ):
         self.bbox = bbox
         self.start_date = start_date
@@ -74,6 +75,7 @@ class VirtughanProcessor:
         self.intermediate_images_with_text: list[str] = []
         self.use_smart_filter = smart_filter
         self.collection_config = get_collection(collection)
+        self.extra_query = extra_query
 
         invalid = self.collection_config.validate_bands(self.bands)
         if invalid:
@@ -156,7 +158,7 @@ class VirtughanProcessor:
         return per_feature
 
     def _extract_date_from_feature(self, feature: dict[str, Any]) -> str:
-        _, date = self.collection_config.tile_id_parser(feature["id"])
+        _, date = self.collection_config.tile_id_parser(feature)
         return date
 
     def _process_images(self, features: list[dict[str, Any]]) -> None:
@@ -382,6 +384,7 @@ class VirtughanProcessor:
             self.start_date,
             self.end_date,
             self.cloud_cover,
+            extra_query=self.extra_query,
         )
         self.console.print(f"Total scenes found: {len(features)}")
         filtered_features = filter_intersected_features(features, self.bbox)

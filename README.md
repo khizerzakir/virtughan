@@ -117,6 +117,27 @@ processor = VirtughanProcessor(
 processor.compute()
 ```
 
+#### Sentinel-1 SAR (cross-pol ratio)
+
+Sentinel-1 is supported via Planetary Computer's RTC (Radiometrically Terrain Corrected) product. Bands are polarizations (`vv`, `vh`, `hh`, `hv`) and pixel values are gamma0 in linear scale. SAR sees through clouds, so `cloud_cover` is ignored for this collection. Filter by acquisition mode (`IW`, `EW`, `SM`, `WV`) via the `extra_query` field.
+
+```python
+processor = VirtughanProcessor(
+    bbox=[83.92, 28.19, 83.99, 28.24],  # Phewa Lake, Pokhara
+    start_date="2025-01-01",
+    end_date="2025-01-20",
+    cloud_cover=0,
+    formula="10 * log10(vv / vh)",  # cross-pol ratio in dB
+    bands=["vv", "vh"],
+    operation="median",
+    timeseries=False,
+    output_dir="virtughan_s1_output",
+    collection="sentinel-1-rtc",
+    extra_query={"sar:instrument_mode": {"eq": "IW"}},
+)
+processor.compute()
+```
+
 
 ### Summary 
 

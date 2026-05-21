@@ -65,14 +65,21 @@ class TileProcessor:
         latest: bool = True,
         operation: str = "median",
         collection: str = "sentinel-2-l2a",
+        mode: str | None = None,
     ) -> tuple[bytes, dict[str, Any]]:
         bands_list = list(bands)
         collection_config = get_collection(collection)
         tile = mercantile.Tile(x, y, z)
         bbox = mercantile.bounds(tile)
         bbox_geojson = mapping(box(bbox.west, bbox.south, bbox.east, bbox.north))
+        extra_query = {"sar:instrument_mode": {"eq": mode}} if mode else None
         results = await search_stac_async(
-            collection_config, bbox_geojson, start_date, end_date, cloud_cover
+            collection_config,
+            bbox_geojson,
+            start_date,
+            end_date,
+            cloud_cover,
+            extra_query=extra_query,
         )
 
         if not results:

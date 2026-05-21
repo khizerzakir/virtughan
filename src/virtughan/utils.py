@@ -25,11 +25,11 @@ def zip_files(file_list: list[str], zip_path: str) -> None:
 
 def filter_latest_image_per_grid(
     features: list[dict[str, Any]],
-    tile_id_parser: Callable[[str], tuple[str, str]],
+    tile_id_parser: Callable[[dict[str, Any]], tuple[str, str]],
 ) -> list[dict[str, Any]]:
     grid_latest: dict[str, dict[str, Any]] = {}
     for feature in features:
-        grid, _ = tile_id_parser(feature["id"])
+        grid, _ = tile_id_parser(feature)
         feature_datetime = feature["properties"]["datetime"]
         if (
             grid not in grid_latest
@@ -48,14 +48,14 @@ def filter_intersected_features(
 
 def remove_overlapping_tiles(
     features: list[dict[str, Any]],
-    tile_id_parser: Callable[[str], tuple[str, str]],
+    tile_id_parser: Callable[[dict[str, Any]], tuple[str, str]],
 ) -> list[dict[str, Any]]:
     if not features:
         return []
 
     zone_counts: dict[str, int] = {}
     for feature in features:
-        zone, _ = tile_id_parser(feature["id"])
+        zone, _ = tile_id_parser(feature)
         zone_counts[zone] = zone_counts.get(zone, 0) + 1
 
     if not zone_counts:
@@ -65,7 +65,7 @@ def remove_overlapping_tiles(
 
     filtered: dict[str, dict[str, Any]] = {}
     for feature in features:
-        zone, date = tile_id_parser(feature["id"])
+        zone, date = tile_id_parser(feature)
         if zone == max_zone and date not in filtered:
             filtered[date] = feature
 
