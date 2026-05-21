@@ -181,6 +181,7 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
       var geojsonLayer;
       var liveLayer;
       var computeLayer;
+      var computeLayerBounds = null; // stored from metadata for zoom-to-layer
       var highlightedLayer = L.layerGroup();
       var activeImagesBboxLayer = null;
       var activeImagesBboxSource = null;

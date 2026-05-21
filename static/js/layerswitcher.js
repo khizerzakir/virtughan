@@ -63,12 +63,12 @@ if (typeof sourceBboxLayers !== "undefined") {
 }
 
 const layer = layers[layerName];
-if (layer) {
+if (layerName === "computeLayer" && typeof computeLayerBounds !== "undefined" && computeLayerBounds) {
+  map.fitBounds(computeLayerBounds);
+} else if (layer) {
   if (layer.getBounds) {
-      // For vector layers
       map.fitBounds(layer.getBounds());
-  } else if (layer.getBounds === undefined && layer._bounds) {
-      // For raster layers
+  } else if (layer._bounds) {
       map.fitBounds(layer._bounds);
   } else {
       console.error(`Layer ${layerName} does not support bounding box`);

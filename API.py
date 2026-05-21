@@ -11,7 +11,10 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import matplotlib
+import numpy as np
 import structlog
+from matplotlib import pyplot as plt
+from PIL import Image
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -519,6 +522,109 @@ async def get_tile(
     except Exception as exc:
         logger.exception("tile_computation_error", z=z, x=x, y=y, collection=collection)
         raise HTTPException(status_code=500, detail=f"Tile computation error: {exc!s}") from exc
+
+
+@app.get("/export-tile/{uid}/{z}/{x}/{y}", tags=["tiles"])
+@limiter.limit(RATE_LIMIT_TILE)
+async def get_export_tile(
+    request: Request,
+    uid: str,
+    z: int,
+    x: int,
+    y: int,
+    colormap: str = Query("RdYlGn", description="Matplotlib colormap name"),
+    vmin: float = Query(..., description="Global min value for normalization"),
+    vmax: float = Query(..., description="Global max value for normalization"),
+):
+    """Serve a colored tile from a completed export GeoTIFF."""
+    tif_path = _safe_uid_path(uid, "custom_band_output_aggregate.tif")
+    if not os.path.exists(tif_path):
+        raise HTTPException(status_code=404, detail="Export result not found")
+
+    try:
+        image_bytes = await asyncio.to_thread(
+            _render_export_tile, tif_path, z, x, y, colormap, vmin, vmax
+        )
+        return Response(content=image_bytes, media_type="image/png")
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/export-tile/{uid}/metadata", tags=["tiles"])
+async def get_export_tile_metadata(request: Request, uid: str):
+    """Return bounds and min/max for a completed export GeoTIFF."""
+    tif_path = _safe_uid_path(uid, "custom_band_output_aggregate.tif")
+    if not os.path.exists(tif_path):
+        raise HTTPException(status_code=404, detail="Export result not found")
+
+    metadata = await asyncio.to_thread(_read_export_metadata, tif_path)
+    return JSONResponse(content=metadata)
+
+
+def _render_export_tile(
+    tif_path: str, z: int, x: int, y: int, colormap: str, vmin: float, vmax: float
+) -> bytes:
+    """Read a tile from the export GeoTIFF and apply colormap using global min/max."""
+    from io import BytesIO
+
+    from rio_tiler.io import Reader
+
+    with Reader(input=tif_path) as cog:
+        img = cog.tile(x, y, z)
+
+    mask = img.mask  # (height, width) 0=nodata, 255=valid
+
+    if img.count == 1:
+        # Single band - apply colormap with global min/max
+        band_data = img.data[0].astype(float)
+        nodata_mask = (mask == 0) | (band_data == -9999) | (~np.isfinite(band_data))
+
+        if vmax == vmin:
+            normalized = np.zeros_like(band_data)
+        else:
+            normalized = np.clip((band_data - vmin) / (vmax - vmin), 0, 1)
+
+        cmap = plt.get_cmap(colormap)
+        colored = cmap(normalized)  # (h, w, 4) RGBA float 0-1
+        rgba = (colored * 255).astype(np.uint8)
+        rgba[nodata_mask] = [0, 0, 0, 0]  # transparent nodata
+    else:
+        # Multi-band (RGB) - use as-is
+        rgb = img.data_as_image()[:, :, :3]
+        alpha = mask.reshape(rgb.shape[0], rgb.shape[1], 1)
+        rgba = np.concatenate([rgb, alpha], axis=2).astype(np.uint8)
+
+    image = Image.fromarray(rgba, "RGBA")
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _read_export_metadata(tif_path: str) -> dict:
+    """Read bounds and statistics from the export GeoTIFF. Cached per path."""
+    import rasterio as rio
+    from rasterio.warp import transform_bounds
+
+    with rio.open(tif_path) as src:
+        bounds = transform_bounds(src.crs, "EPSG:4326", *src.bounds)
+        data = src.read(1).astype(float)
+        nodata = src.nodata
+        # Mask out nodata, -9999, and non-finite values
+        valid_mask = np.isfinite(data)
+        if nodata is not None:
+            valid_mask &= data != nodata
+        valid_mask &= data != -9999
+        valid = data[valid_mask]
+
+        vmin = float(valid.min()) if valid.size > 0 else 0
+        vmax = float(valid.max()) if valid.size > 0 else 1
+
+    west, south, east, north = bounds
+    return {
+        "bounds": [[south, west], [north, east]],
+        "min": vmin,
+        "max": vmax,
+    }
 
 
 @app.get("/image-download", tags=["compute"])
