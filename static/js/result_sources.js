@@ -16,8 +16,8 @@ function escapeHtml(value) {
 }
 
 function getResultSourceLabel(source) {
-  if (source === "search") return "Search";
-  if (source === "analyze") return "Analyze";
+  if (source === "search") return "Tiles";
+  if (source === "analyze") return "Compute";
   if (source === "download") return "Download";
   return "None";
 }
@@ -78,8 +78,8 @@ function updateLayerCountSummary() {
   const analyzeEl = document.getElementById("layer-count-analyze");
   const downloadEl = document.getElementById("layer-count-download");
 
-  if (searchEl) searchEl.textContent = `Search (${searchCount})`;
-  if (analyzeEl) analyzeEl.textContent = `Analyze (${analyzeCount})`;
+  if (searchEl) searchEl.textContent = `Tiles (${searchCount})`;
+  if (analyzeEl) analyzeEl.textContent = `Compute (${analyzeCount})`;
   if (downloadEl) downloadEl.textContent = `Download (${downloadCount})`;
 }
 

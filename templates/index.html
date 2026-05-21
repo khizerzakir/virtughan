@@ -384,9 +384,9 @@
       <div class="container mx-auto pb-4 pt-1">
         <div class="tabs">
           <div class="flex justify-center mb-2">
-            <button id="filterTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500">Live View</button>
-            <button id="resultTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500">Result</button>
-            <button id="exportTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500">Export</button>
+            <button id="filterTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500" data-panel="0">Tiles</button>
+            <button id="exportTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500" data-panel="2">Export</button>
+            <button id="resultTab" class="tab w-1/3 py-2 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500" data-panel="1">Result</button>
           </div>
           <div class="tab-content">
             <div class="tab-panel hidden">
@@ -538,14 +538,14 @@
               <div id="sidebar" class="p-4 tab-scrollable-content" >
                 <div class="pb-2 space-y-2">
                   <div id="layer-count-summary" class="text-xs text-gray-500 px-2">
-                    Layers: <span id="layer-count-search">Search (0)</span> | <span id="layer-count-analyze">Analyze (0)</span> | <span id="layer-count-download">Download (0)</span>
+                    Layers: <span id="layer-count-search">Tiles (0)</span> | <span id="layer-count-analyze">Compute (0)</span> | <span id="layer-count-download">Download (0)</span>
                   </div>
                   <div class="flex flex-col gap-2 rounded-md bg-gray-50 px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <span id="result-active-source" class="text-xs text-gray-500">Active result: None</span>
                     <div class="flex items-center gap-2">
                       <select id="result-source-switcher" class="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-36">
-                        <option value="search">Search</option>
-                        <option value="analyze">Analyze</option>
+                        <option value="search">Tiles</option>
+                        <option value="analyze">Compute</option>
                         <option value="download">Download</option>
                       </select>
                       <button id="output-layer-clear-button" type="button" class="clear-visualize-filter text-gray-500 text-xs whitespace-nowrap" title="Reset"><i class="fa-solid fa-rotate-right"></i></button>
@@ -586,7 +586,7 @@
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
                           <input id="search_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="search">
-                          <label id="images_bbox_label_search" class="block text-sm/6 font-medium text-gray-700">Bbox Search</label>
+                          <label id="images_bbox_label_search" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Tiles)</label>
                         </div>
                         <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
                           <i id="zoom_geojsonLayer" class="zoom-to-layer fas fa-search-plus"></i>
@@ -601,7 +601,7 @@
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
                           <input id="analyze_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="analyze">
-                          <label id="images_bbox_label_analyze" class="block text-sm/6 font-medium text-gray-700">Bbox Analyze</label>
+                          <label id="images_bbox_label_analyze" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Compute)</label>
                         </div>
                         <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
                           <i id="zoom_analyzeBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
@@ -616,7 +616,7 @@
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
                           <input id="download_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="download">
-                          <label id="images_bbox_label_download" class="block text-sm/6 font-medium text-gray-700">Bbox Download</label>
+                          <label id="images_bbox_label_download" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Download)</label>
                         </div>
                         <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
                           <i id="zoom_downloadBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
@@ -790,7 +790,7 @@
                   <div class="flex items-center space-x-4">
                     <div class="flex items-center p-2">
                       <input type="radio" id="analyze-data" name="option" value="analyze" class="radio-action form-radio h-4 w-4 text-blue-600" checked>
-                      <label for="analyze" class="ml-2 text-sm text-gray-700">Analyze</label>
+                      <label for="analyze" class="ml-2 text-sm text-gray-700">Compute</label>
                     </div>
                     <div class="flex items-center">
                       <input type="radio" id="download-data" name="option" value="download" class="radio-action form-radio h-4 w-4 text-blue-600">
@@ -1007,8 +1007,8 @@
                 <button id="export-clear-button" class="clear-visualize-filter bg-transparent rounded-lg text-gray-500 text-sm text-center self-center px-3 py-2 my-2 mx-2">
                   <i class="fa-solid fa-rotate-right"></i> Clear
                 </button>
-                <button id="export-map-view-button" title="Select Filter Above to Visualize" class="bg-gray-500 pointer-events-none text-white rounded-lg text-sm text-center self-center px-3 py-2 my-2 mx-2">
-                  <i class="fa-regular fa-eye"></i> Visualize and Export
+                <button id="export-map-view-button" title="Select Filter Above" class="bg-gray-500 pointer-events-none text-white rounded-lg text-sm text-center self-center px-3 py-2 my-2 mx-2">
+                  <i class="fa-regular fa-eye"></i> Compute
                 </button>
                 <!-- <button id="export-file-button" title="Select Filter Above to Visualize" class="hidden bg-gray-500 pointer-events-none text-white rounded-lg text-sm text-center self-center px-3 py-2 my-2 mx-2">
                   <i class="fa-regular fa-eye"></i> Download
@@ -1262,8 +1262,6 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-    <script src="https://unpkg.com/georaster"></script>
-    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
     <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
     <!-- custom js -->

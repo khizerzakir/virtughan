@@ -312,12 +312,8 @@ downloading = false;
 
       var min;
       var max;
-      var geoRaster;
-
-      // console.log(interpolatedColorScales);
 
       var selectedPalette = getSelectedPalette();
-      // console.log(selectedPalette);
 
       
 
@@ -325,91 +321,57 @@ downloading = false;
         if (computeLayer) {
             map.removeLayer(computeLayer);
         }
-        showLoaderOnMap(null, true);// for loader to load until it downloads file
+        showLoaderOnMap(null, true);
 
-        fetch(tifUrl)
-          .then(response => {
-            if (!response.ok) {
-              showLoaderOnMap(null, false);
-                if (response.status == 404) {
-                  showMessage('error', 0, '404 Not Found: Couldnot load data on map. The requested file does not exist.')
-                } else {
-                  showMessage('error', 0, `HTTP error! Status: ${response.status}`)  
-                }
-              }
-              return response.arrayBuffer();
+        // Extract uid from the tifUrl path: static/export/{uid}/custom_band_output_aggregate.tif
+        const parts = tifUrl.split('/');
+        const uid = parts[2]; // static/export/{uid}/...
+
+        selectedPalette = getSelectedPalette();
+
+        // Fetch metadata (bounds + min/max) then add tile layer
+        fetch(`/export-tile/${uid}/metadata`)
+          .then(response => response.json())
+          .then(metadata => {
+            downloading = false;
+            showLoaderOnMap(null, false);
+
+            min = metadata.min;
+            max = metadata.max;
+
+            const tileUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${selectedPalette}&vmin=${min}&vmax=${max}`;
+            computeLayer = L.tileLayer(tileUrl, {
+              tileSize: 256,
+              opacity: 0.8,
+              zIndex: 5,
+              maxZoom: 22,
+              maxNativeZoom: 18,
+              errorTileUrl: '',
+            });
+
+            // Store uid on the layer for palette changes
+            computeLayer._exportUid = uid;
+
+            showLoaderOnMap(computeLayer, false);
+            map.addLayer(computeLayer);
+            updateLegend(selectedPalette);
+
+            if (typeof updateLayerCountSummary === "function") {
+              updateLayerCountSummary();
+            }
+
+            // Fit map to the raster bounds
+            var bounds = L.latLngBounds(metadata.bounds);
+            computeLayerBounds = bounds;
+            map.fitBounds(bounds);
+
+            document.getElementById("legend").classList.remove("hidden");
+            initializeTransparency();
           })
-          .then(arrayBuffer => {
-            parseGeoraster(arrayBuffer).then(georaster => {
-              downloading = false; //remove loader afer file is downloaded.
-              console.log("georaster:", georaster);
-              geoRaster = georaster;
-
-              /*
-                  GeoRasterLayer is an extension of GridLayer,
-                  which means can use GridLayer options like opacity.
-
-                  Just make sure to include the georaster option!
-
-                  Optionally set the pixelValuesToColorFn function option to customize
-                  how values for a pixel are translated to a color.
-
-                  https://leafletjs.com/reference.html#gridlayer
-              */
-              
-              //uncomment this if the raster contains min and max and handled nodata values. eg. min and max doesnot have values like 100000000000000.
-              min = georaster.mins[0];
-              max = georaster.maxs[0];
-
-              //uncomment this if raster min, max has values like 1000000000000.
-              // const validValues = processRasterData(georaster); 
-              // Calculate min and max values
-              // console.log(validValues);
-              // min = Math.min(...validValues);
-              // max = Math.max(...validValues);
-
-              console.log('Min Value:', min);
-              console.log('Max Value:', max);
-
-              computeLayer = new GeoRasterLayer({
-                  georaster: georaster,
-                  opacity: 0.8,
-                  resolution: 256,
-                  zIndex: 5,
-                  caching: false,
-                  // updateWhenZooming:true,
-                  pixelValuesToColorFn: values => {
-                      // var normalizedValue = (values[0] - min) / (max - min);
-                        // console.log(values);
-                        if(values[0] == -9999){
-                          return 'rgba(0, 0, 0, 0)';
-                        }
-                        else{
-                          return updateColor(values, selectedPalette);
-                        }
-                       // Get continuous color
-                  }
-              });
-              
-              showLoaderOnMap(computeLayer, false);
-              map.addLayer(computeLayer);
-              updateLegend(selectedPalette);
-
-              if (typeof updateLayerCountSummary === "function") {
-                updateLayerCountSummary();
-              }
-
-              map.fitBounds(computeLayer.getBounds());
-
-              //add legend after adding layer
-              document.getElementById("legend").classList.remove("hidden");
-              
-              initializeTransparency();
+          .catch(error => {
+            console.log("error loading export tiles", error);
+            showLoaderOnMap(null, false);
           });
-        }).catch((error) => {
-          console.log("error downloading data", error);
-          showLoaderOnMap(null, false);
-        });
       }
 
       // document.getElementById('paletteSelect').addEventListener('change', (event) => {
@@ -419,16 +381,11 @@ downloading = false;
       
 
       function updateRasterColor(scaleName) {
-        // console.log("entered updaterastercolor");
-        if (computeLayer) {
-          computeLayer.updateColors(pixelValuesToColorFn = values => {
-              if (values[0] == -9999) {
-                  return 'rgba(0, 0, 0, 0)'; // Transparent color for NaN values
-              } else {
-                  return updateColor(values, scaleName); // Handle single-band and multi-band rasters
-              }
-            });
-          }
+        if (computeLayer && computeLayer._exportUid) {
+          const uid = computeLayer._exportUid;
+          const newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${scaleName}&vmin=${min}&vmax=${max}`;
+          computeLayer.setUrl(newUrl);
+        }
       }
 
 

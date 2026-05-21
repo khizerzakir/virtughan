@@ -52,10 +52,11 @@ document.addEventListener('DOMContentLoaded', function() {
         tabs.forEach(tab => tab.classList.remove('border-blue-500', 'text-blue-500'));
         tab.classList.add('border-blue-500', 'text-blue-500');
         tabPanels.forEach(panel => panel.classList.add('hidden'));
-        tabPanels[index].classList.remove('hidden');
+        const panelIndex = parseInt(tab.dataset.panel || index);
+        tabPanels[panelIndex].classList.remove('hidden');
 
-        // When Export tab is activated (index 2), validate button state
-        if (index === 2) {
+        // When Compute & Download tab is activated (panel index 2), validate button state
+        if (panelIndex === 2) {
           const exportBtn = document.getElementById("export-map-view-button");
           const analyzeChecked = document.getElementById("analyze-data").checked;
           if (exportBtn) {
