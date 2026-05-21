@@ -339,7 +339,7 @@ downloading = false;
             const tileUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${selectedPalette}&vmin=${min}&vmax=${max}`;
             computeLayer = L.tileLayer(tileUrl, {
               tileSize: 256,
-              opacity: 0.8,
+              opacity: 1,
               zIndex: 5,
               maxZoom: 22,
               maxNativeZoom: 18,
