@@ -356,6 +356,14 @@ downloading = false;
             if (typeof updateLayerCountSummary === "function") {
               updateLayerCountSummary();
             }
+            // Update compute layer info tooltip
+            var computeInfo = document.getElementById('compute-layer-info');
+            if (computeInfo) {
+              var filterBtn = document.getElementById('select-button_export');
+              var filterName = filterBtn ? filterBtn.querySelector('.truncate').innerText : '';
+              var label = (filterName && filterName !== 'Select Option') ? filterName + ' | ' : 'Custom | ';
+              computeInfo.setAttribute('data-formula', label + 'Formula: ' + export_params.formula + ' | Bands: ' + export_params.bands);
+            }
 
             // Fit map to the raster bounds
             var bounds = L.latLngBounds(metadata.bounds);
