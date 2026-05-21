@@ -184,6 +184,24 @@ function populateBandSelectors(collection) {
     calculatorLabel.textContent = `${COLLECTION_LABELS[collection] || collection} Bands`;
   }
 
+  // Populate band reference panel
+  const refList = document.getElementById('band-reference-list');
+  if (refList) {
+    const bandData = collectionMetadata?.[collection]?.bands || {};
+    refList.innerHTML = bandNames.map(name => {
+      const info = bandData[name] || {};
+      const res = info.resolution ? `${info.resolution}m` : '';
+      const wl = info.wavelength || '';
+      const desc = info.description || '';
+      const meta = [wl, res].filter(Boolean).join(' · ');
+      return `<div class="px-2 py-1 rounded hover:bg-gray-100 border-b border-gray-50">
+        <span class="font-medium text-gray-800">${name}</span>
+        ${meta ? `<span class="text-gray-400 ml-1">${meta}</span>` : ''}
+        ${desc ? `<span class="text-gray-400 ml-1 text-[10px]">${desc}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+
   // Rebuild band rows from current export_params.bands
   rebuildFormulaBandRows();
 }
