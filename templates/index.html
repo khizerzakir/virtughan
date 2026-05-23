@@ -149,25 +149,55 @@
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background-color: white;
-      padding: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      background-color: rgba(255,255,255,0.92);
+      padding: 10px 14px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
       border-radius: 5px;
+      font-size: 11px;
+      max-width: 550px;
+    }
+
+    .legend-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 5px;
       display: flex;
-      flex-direction: column;
-      font-size:14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .legend-bar {
+      display: flex;
+      flex-direction: row;
     }
 
     .legend-item {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      margin-bottom: 5px;
+      flex: 1;
+      min-width: 45px;
     }
 
     .legend-color {
-      width: 20px;
-      height: 20px;
-      margin-right: 5px;
+      width: 100%;
+      height: 15px;
+    }
+
+    .legend-item span {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .legend-minimize-btn {
+      cursor: pointer;
+      color: #9ca3af;
+      font-size: 10px;
+    }
+    .legend-minimize-btn:hover {
+      color: #374151;
     }
 
 
@@ -180,7 +210,7 @@
 <style>
   .color-option {
       width: 100%;
-      height: 20px;
+      height: 15px;
       display: block;
   }
   .dropdown-color-select option {
@@ -539,13 +569,13 @@
                 
                 <div class="bg-white mt-4">
                   <div class="relative bg-inherit">
-                      <input type="number" id="cloud-cover" name="" value = "30" style = "font-size:14px !important;" class="peer bg-transparent h-10 w-full rounded-lg text-gray-800 placeholder-transparent ring-1 px-2 ring-gray-200 focus:ring-sky-600 focus:outline-none focus:border-rose-600" placeholder="Cloud Cover"/><label for="" style = "font-size:12px !important;" class="absolute cursor-text left-0 -top-3 text-sm text-gray-500 bg-inherit mx-1 px-1 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-placeholder-shown:top-2 peer-focus:-top-3 peer-focus:text-sky-600 peer-focus:text-sm transition-all">Cloud Cover</label>
+                      <input type="number" id="cloud-cover" name="" value = "30" style = "font-size:14px !important;" class="peer bg-transparent h-10 w-full rounded-lg text-gray-800 placeholder-transparent ring-1 px-2 ring-gray-200 focus:ring-sky-600 focus:outline-none focus:border-rose-600" placeholder="Cloud Cover"/><label for="" style = "font-size:12px !important;" class="absolute cursor-text left-0 -top-3 text-sm text-gray-500 bg-inherit mx-1 px-1 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-placeholder-shown:top-2 peer-focus:-top-3 peer-focus:text-sky-600 peer-focus:text-sm transition-all">Max Cloud Cover (%)</label>
                   </div>
                 </div>
               </div>
 
               <div class="mb-4 mt-2">
-                <label class="block text-sm font-medium text-gray-800 pb-1">Select Time Dimension <i title = "If not checked, latest image from time range will be processed by default." class="info-icons fa-regular fa-circle-question text-gray-500 text-xs"></i></label>
+                <label class="block text-sm font-medium text-gray-800 pb-1">Select Time Dimension <i title="When enabled, processes all images in the date range and aggregates them using the selected operation (median, mean, etc.). When disabled, only the most recent image is used." class="info-icons fa-regular fa-circle-question text-gray-500 text-xs"></i></label>
                 <div class="flex items-center">
                   <input id="timeSeries_search" type="checkbox" name="option" class="output_type form-radio h-4 w-4 text-blue-600">
                   <label for="timeSeries_search" class="ml-2 text-sm text-gray-600">Analyze data over time</label>
@@ -616,14 +646,96 @@
                         <input id = "transparency_liveLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
                       <div id="tileColorPalettes" class="relative inline-block w-full">
-                        <button id="TilePaletteSelectButton" class="block w-full px-4 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleTilePaletteDropdown()">
-                        </button>
+                        <div class="flex items-center gap-1 mt-1">
+                          <button id="TilePaletteSelectButton" class="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleTilePaletteDropdown()">
+                          </button>
+                          <button id="tilePaletteFlipBtn" type="button" class="px-2 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:text-blue-600 text-sm" title="Flip colormap" onclick="flipTilePalette()">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                          </button>
+                        </div>
                         <div id="TilePaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
                             <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
                             </ul>
                         </div>
                       </div>
                     </div>
+                    <div id="computeLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
+                      <div id = "layerSwitcherBox" class = "hidden">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="compute_layer" type="checkbox" class="layerSwitcher form-checkbox h-4 w-4 text-blue-600" checked>
+                          <label for="compute_layer" class="block text-sm font-medium text-gray-700">Compute Output Layer</label>
+                          <i id="compute-layer-info" class="fa-regular fa-circle-question text-gray-400 text-xs cursor-pointer hover:text-blue-500" title=""></i>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_computeLayer" class="zoom-to-layer fas fa-search-plus"></i>
+                        </button>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <label for="transparency_computeLayer" class="text-sm mr-2 text-gray-500">Transparency:</label>
+                        <input id="transparency_computeLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
+                      </div>
+                      <div id="colorPalettes" class="relative inline-block w-full">
+                        <div class="flex items-center gap-1 mt-1">
+                          <button id="PaletteSelectButton" class="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleDropdown()">
+                              <!-- Default selected color will be displayed here -->
+                          </button>
+                          <button id="computePaletteFlipBtn" type="button" class="px-2 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:text-blue-600 text-sm" title="Flip colormap" onclick="flipComputePalette()">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                          </button>
+                        </div>
+                        <div id="PaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
+                            <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
+                                <!-- Options will be generated here -->
+                            </ul>
+                        </div>
+                    </div>
+                      <div id="after-compute-buttons" class="flex items-center justify-end mt-2 space-x-4 hidden">
+                        <button id="download-result-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
+                          <i class="fas fa-download"></i>
+                        </button>
+                        <button id="view-result-image" title="View" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs">View 
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </div>
+                      </div>
+                      
+                      <div id="compute_progressbar" class="relative w-full" style="display: none;">
+                        <div class="mb-4">
+                          <label id = "computation_progress_text" class="block text-xs font-medium text-gray-900 pb-2">Computation Progress</label>
+                          <ul id="ProgressTextsBefore" class="list-none list-inside text-xs text-gray-700 mb-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <li style = "font-size: 10px;">Please Wait Computing...</li>
+                          </ul>
+                        </div>
+                        <div class="relative w-full bg-gray-300 h-3 rounded mt-4">
+                          <div class="absolute inset-0 flex items-center justify-center text-white" id="compute_progress_text">0%</div>
+                          <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="compute_progress" style="width: 0%"></div>
+                        </div>
+                      </div>
+                      
+                    </div>
+
+                    <div id="downloadLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
+                      <div id="download-complete" class="hidden">
+                        <label class="block text-xs font-medium text-gray-900 pb-2">Layer Ready to Download!!!</label>
+                        <button id="download-band-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                      <div id="download_progressbar" class="relative w-full" style="display: none;">
+                        <div class="mb-4">
+                          <label id="download_computation_progress_text" class="block text-xs font-medium text-gray-900 pb-2">Download Progress</label>
+                          <ul id="DownloadProgressTexts" class="list-none list-inside text-xs text-gray-700 mb-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <li style = "font-size: 10px;">Please Wait Downloading...</li>
+                          </ul>
+                        </div>
+                        <div class="relative w-full bg-gray-300 h-3 rounded mt-4">
+                          <div class="absolute inset-0 flex items-center justify-center text-white" id="download_progress_text">0%</div>
+                          <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="download_progress" style="width: 0%"></div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="search">
                       <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center space-x-2">
@@ -667,78 +779,6 @@
                       <div class="flex items-center mb-2">
                         <span class="text-sm mr-2 text-gray-500">Transparency:</span>
                         <input id = "transparency_downloadBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
-                      </div>
-                    </div>
-
-                    <div id="computeLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
-                      <div id = "layerSwitcherBox" class = "hidden">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                          <input id="compute_layer" type="checkbox" class="layerSwitcher form-checkbox h-4 w-4 text-blue-600" checked>
-                          <label for="compute_layer" class="block text-sm font-medium text-gray-700">Compute Output Layer</label>
-                          <i id="compute-layer-info" class="fa-regular fa-circle-question text-gray-400 text-xs cursor-pointer hover:text-blue-500" title=""></i>
-                        </div>
-                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
-                          <i id="zoom_computeLayer" class="zoom-to-layer fas fa-search-plus"></i>
-                        </button>
-                      </div>
-                      <div class="flex items-center mb-2">
-                        <label for="transparency_computeLayer" class="text-sm mr-2 text-gray-500">Transparency:</label>
-                        <input id="transparency_computeLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
-                      </div>
-                      <div id="colorPalettes" class="relative inline-block w-full">
-                        <button id="PaletteSelectButton" class="block w-full px-4 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleDropdown()">
-                            <!-- Default selected color will be displayed here -->
-                        </button>
-                        <div id="PaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
-                            <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
-                                <!-- Options will be generated here -->
-                            </ul>
-                        </div>
-                    </div>
-                      <div id="after-compute-buttons" class="flex items-center justify-end mt-2 space-x-4 hidden">
-                        <button id="download-result-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
-                          <i class="fas fa-download"></i>
-                        </button>
-                        <button id="view-result-image" title="View" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs">View 
-                          <i class="fas fa-eye"></i>
-                        </button>
-                      </div>
-                      </div>
-                      
-                      <div id="compute_progressbar" class="relative w-full">
-                        <div class="mb-4">
-                          <label id = "computation_progress_text" class="block text-xs font-medium text-gray-900 pb-2">Computation Progress</label>
-                          <ul id="ProgressTextsBefore" class="list-none list-inside text-xs text-gray-700 mb-2 max-h-40 overflow-y-auto custom-scrollbar">
-                            <li style = "font-size: 10px;">Please Wait Computing...</li>
-                          </ul>
-                        </div>
-                        <div class="relative w-full bg-gray-300 h-3 rounded mt-4">
-                          <div class="absolute inset-0 flex items-center justify-center text-white" id="compute_progress_text">0%</div>
-                          <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="compute_progress" style="width: 0%"></div>
-                        </div>
-                      </div>
-                      
-                    </div>
-
-                    <div id="downloadLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
-                      <div id="download-complete" class="hidden">
-                        <label class="block text-xs font-medium text-gray-900 pb-2">Layer Ready to Download!!!</label>
-                        <button id="download-band-image" title="Download" class="p-2 border border-gray-400 text-white hover:bg-blue-600 bg-blue-500 rounded text-xs"> Download 
-                          <i class="fas fa-download"></i>
-                        </button>
-                      </div>
-                      <div id="download_progressbar" class="relative w-full" style="display: none;">
-                        <div class="mb-4">
-                          <label id="download_computation_progress_text" class="block text-xs font-medium text-gray-900 pb-2">Download Progress</label>
-                          <ul id="DownloadProgressTexts" class="list-none list-inside text-xs text-gray-700 mb-2 max-h-40 overflow-y-auto custom-scrollbar">
-                            <li style = "font-size: 10px;">Please Wait Downloading...</li>
-                          </ul>
-                        </div>
-                        <div class="relative w-full bg-gray-300 h-3 rounded mt-4">
-                          <div class="absolute inset-0 flex items-center justify-center text-white" id="download_progress_text">0%</div>
-                          <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="download_progress" style="width: 0%"></div>
-                        </div>
                       </div>
                     </div>
                           
@@ -1057,7 +1097,7 @@
 
                 
                 <div id = "smartFiltersContainer" class="mb-4 mt-2">
-                  <label class="block text-sm font-medium text-gray-800 pb-1">Smart Filters <i title = "if enabled chooses weekly image for frequency upto 2 months, monthly for up to 1 year , quarterly up to 3 years and semi-annually for more than 3 years. For each period it selects least cloud cover image" class="info-icons fa-regular fa-circle-question text-gray-500 text-xs"></i></label>
+                  <label class="block text-sm font-medium text-gray-800 pb-1">Smart Filters <i title="To reduce image volume, one image with the lowest cloud cover is selected for each time interval based on the date range: bi-weekly for up to 3 months, monthly for up to 1 year, quarterly for up to 3 years, and semi-annually for longer periods." class="info-icons fa-regular fa-circle-question text-gray-500 text-xs"></i></label>
                   <div class="flex items-center">
                     <input id="smart-filters" type="checkbox" name="option" class="output_type form-radio h-4 w-4 text-blue-600">
                     <label for="smart-filters" class="ml-2 text-sm text-gray-600">Enable Smart Filters</label>
@@ -1111,6 +1151,11 @@
 
 
   <div id="map" class = "w-full md:w-3/4 md:min-w-[75%] min-h-screen md:min-h-full z-0">
+    <div id="zoom-warning-overlay" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1100;">
+      <div style="background:#fef3c7;border:1px solid #f59e0b;padding:6px 14px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;font-size:12px;color:#92400e;">
+        <i class="fa-solid fa-triangle-exclamation mr-1"></i>Zoom in to view tiles (level 10+)
+      </div>
+    </div>
   </div>
   <div id="legend" class="legends hidden text-gray-xs"></div>
   
@@ -1696,9 +1741,16 @@
       // Update progress based on fetched data
       const progressBar = document.getElementById(`${name}_progress`);
       const progressBarContainer = document.getElementById(`${name}_progressbar`);
+      const progressText = document.getElementById(`${name}_progress_text`);
 
       progressBar.style.width = progress + '%';
-      document.getElementById(`${name}_progress_text`).textContent = `${Math.floor(progress)}%`;
+      if (progress === 0) {
+        progressText.textContent = 'Please wait, processing...';
+        progressText.style.color = '#6b7280';
+      } else {
+        progressText.textContent = `${Math.floor(progress)}%`;
+        progressText.style.color = 'white';
+      }
 
       // Hide progress bar if complete
       if (progress >= 100) {
@@ -1718,16 +1770,24 @@
       }
     }
 
-    function displayNoImageFoundMessage() {
-      const progressBarContainer = document.getElementById('compute_progressbar');
-      const progressText = document.getElementById('compute_progress_text');
-      document.getElementById("ProgressTextsBefore").innerHTML = "";
+    function displayNoImageFoundMessage(msg, isAnalyze) {
+      msg = msg || 'No image found / try smaller AOI';
+      var progressBarId = isAnalyze ? 'compute_progressbar' : 'download_progressbar';
+      var progressTextId = isAnalyze ? 'compute_progress_text' : 'download_progress_text';
+      var progressListId = isAnalyze ? 'ProgressTextsBefore' : 'DownloadProgressTexts';
+
+      const progressBarContainer = document.getElementById(progressBarId);
+      const progressText = document.getElementById(progressTextId);
+      const progressList = document.getElementById(progressListId);
+      if (progressList) progressList.innerHTML = "";
       
-      progressText.style.removeProperty('font-size');
-      progressText.textContent = 'No image found/ try smaller AOI';
-      progressText.style.fontSize = "10px !important";
-      progressText.style.color = 'red';
-      progressBarContainer.style.display = 'block';
+      if (progressText) {
+        progressText.style.removeProperty('font-size');
+        progressText.textContent = msg;
+        progressText.style.fontSize = "10px";
+        progressText.style.color = 'red';
+      }
+      if (progressBarContainer) progressBarContainer.style.display = 'block';
     }
 
   </script>

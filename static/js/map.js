@@ -242,6 +242,15 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         document.getElementById("coords").textContent = tile_params.bbox;
         if(export_params_bbox_changed){}else{document.getElementById("map-window-content").innerHTML = export_params.bbox;}
         document.getElementById("zoom-level").textContent = map.getZoom();
+        // Show zoom warning if tiles are active and zoom < 10
+        var zoomWarning = document.getElementById('zoom-warning-overlay');
+        if (zoomWarning) {
+          if (map.getZoom() < 10 && liveLayer && map.hasLayer(liveLayer)) {
+            zoomWarning.style.display = 'flex';
+          } else {
+            zoomWarning.style.display = 'none';
+          }
+        }
       });
 
       function parseBboxString(bboxValue) {
@@ -516,7 +525,7 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
 
         var tileErrorShown = false;
         liveLayer.on('tileerror', function () {
-          if (!tileErrorShown) {
+          if (!tileErrorShown && map.getZoom() >= 10) {
             tileErrorShown = true;
             showMessage('warning', 8000, 'Some tiles failed to load from the server. The map shows a blank fallback tile instead of a broken image.');
           }
@@ -526,6 +535,11 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         liveLayer.addTo(map);
         if (typeof updateLayerCountSummary === "function") {
           updateLayerCountSummary();
+        }
+        // Show zoom warning immediately if zoom < 10
+        var zoomWarning = document.getElementById('zoom-warning-overlay');
+        if (zoomWarning) {
+          zoomWarning.style.display = map.getZoom() < 10 ? 'block' : 'none';
         }
         // Update tiles layer info tooltip
         var tilesInfo = document.getElementById('tiles-layer-info');

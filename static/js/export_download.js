@@ -82,11 +82,15 @@ downloading = false;
           var areaKm2 = area / 1000000;
           // console.log('Area: ' + areaKm2.toFixed(2) + ' square kilometers');
   
-          if(areaKm2 > 500){
-            // showMessage('success', "message");
-            showMessage('warning', 10000, "Zoom in or reduce the size of your area of interest. <br/> Eg. smaller AOI than 500 SQ.Km. Sorry, this is due to limited server specs.");
+          if(areaKm2 > 5000){
+            showMessage('error', 0, "Area too large (" + areaKm2.toFixed(0) + " km²). Maximum allowed is 5,000 km². Please zoom in or draw a smaller area of interest.");
+            return;
           }
-          else{ // if aoi area is fine
+          else if(areaKm2 > 2500){
+            showMessage('warning', 15000, "Large area selected (" + areaKm2.toFixed(0) + " km²). Processing may take several minutes. Consider reducing the area for faster results.");
+          }
+          // proceed with export
+        {
         
         var url_compute = `/export?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&formula=${encodeURIComponent(export_params.formula)}&bands=${encodeURIComponent(export_params.bands)}&timeseries=${encodeURIComponent(export_params.timeseries)}&smart_filters=${smartFilters}&collection=${encodeURIComponent(export_params.collection)}`;
 
@@ -222,7 +226,13 @@ downloading = false;
 
         function updateProgress(logData, isAnalyze) {
           if (logData.includes('No images found') || logData.includes('Filtered 0 items') || logData.includes('Scenes covering input area: 0')) {
-              displayNoImageFoundMessage();
+              var msg = 'No image found / try smaller Area';
+              if (logData.includes('Scenes covering input area: 0')) {
+                msg = '0 scenes fully covering input area / try smaller Area';
+              } else if (logData.includes('Filtered 0 items')) {
+                msg = '0 items after filtering / adjust date or cloud cover';
+              }
+              displayNoImageFoundMessage(msg, isAnalyze);
           } else {
               const progressListId = isAnalyze ? 'ProgressTextsBefore' : 'DownloadProgressTexts';
               const progressName = isAnalyze ? 'compute' : 'download';
@@ -302,7 +312,7 @@ downloading = false;
             map.removeLayer(computeLayer);
         }
 
-        }//end of else, warning
+        }//end of area check
 
       });
 
@@ -387,9 +397,12 @@ downloading = false;
 
       function updateRasterColor(scaleName) {
         if (computeLayer && computeLayer._exportUid) {
-          const uid = computeLayer._exportUid;
-          const newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${scaleName}&vmin=${min}&vmax=${max}`;
-          computeLayer.setUrl(newUrl);
+          var uid = computeLayer._exportUid;
+          var colormapForBackend = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped) ? scaleName + '_r' : scaleName;
+          if (typeof min !== 'undefined' && typeof max !== 'undefined' && min !== undefined && max !== undefined) {
+            var newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${colormapForBackend}&vmin=${min}&vmax=${max}`;
+            computeLayer.setUrl(newUrl);
+          }
         }
       }
 
@@ -397,16 +410,27 @@ downloading = false;
       function updateLegend(paletteName) {
         const legend = document.getElementById('legend');
         const colorScale = colorScales[paletteName];
-        const steps = 10; // Number of steps in the legend
+        const steps = 10;
         const stepValue = (max - min) / (steps - 1);
+        const flipped = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped);
 
-        // Clear existing legend items
         legend.innerHTML = '';
 
-        // Create legend items based on color scale and pixel value range
+        // Title with minimize button
+        const title = document.createElement('div');
+        title.className = 'legend-title';
+        title.innerHTML = '<span>Compute Output Layer</span><span class="legend-minimize-btn" id="legend-minimize" title="Minimize"><i class="fa-solid fa-minus"></i></span>';
+        legend.appendChild(title);
+
+        // Color bar container
+        const bar = document.createElement('div');
+        bar.className = 'legend-bar';
+        bar.id = 'legend-bar-content';
+
         for (let i = 0; i < steps; i++) {
             const value = min + i * stepValue;
-            const color = d3.scaleSequential(colorScale).domain([min, max])(value);
+            const colorInput = flipped ? 1 - (i / (steps - 1)) : i / (steps - 1);
+            const color = colorScale(colorInput);
 
             const legendItem = document.createElement('div');
             legendItem.className = 'legend-item';
@@ -416,12 +440,26 @@ downloading = false;
             colorBox.style.backgroundColor = color;
 
             const labelText = document.createElement('span');
-            labelText.textContent = `${value.toFixed(2)}`;
+            labelText.textContent = value.toFixed(2);
 
             legendItem.appendChild(colorBox);
             legendItem.appendChild(labelText);
-            legend.appendChild(legendItem);
+            bar.appendChild(legendItem);
         }
+
+        legend.appendChild(bar);
+
+        // Minimize toggle
+        document.getElementById('legend-minimize').addEventListener('click', function() {
+          var content = document.getElementById('legend-bar-content');
+          if (content.style.display === 'none') {
+            content.style.display = 'flex';
+            this.innerHTML = '<i class="fa-solid fa-minus"></i>';
+          } else {
+            content.style.display = 'none';
+            this.innerHTML = '<i class="fa-solid fa-plus"></i>';
+          }
+        });
     }
 
 

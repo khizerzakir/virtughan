@@ -203,12 +203,13 @@ function selectTileColor(colorScale, scaleName, skipReload) {
     // Reload tile layer with new colormap
     if (!skipReload && typeof liveLayer !== 'undefined' && liveLayer && typeof map !== 'undefined') {
         const currentUrl = liveLayer._url;
+        var colormapParam = (typeof tilePaletteFlipped !== 'undefined' && tilePaletteFlipped) ? scaleName + '_r' : scaleName;
         // Replace or add colormap_str param
         let newUrl;
         if (currentUrl.includes('colormap_str=')) {
-            newUrl = currentUrl.replace(/colormap_str=[^&]*/, 'colormap_str=' + scaleName);
+            newUrl = currentUrl.replace(/colormap_str=[^&]*/, 'colormap_str=' + colormapParam);
         } else {
-            newUrl = currentUrl + '&colormap_str=' + scaleName;
+            newUrl = currentUrl + '&colormap_str=' + colormapParam;
         }
         liveLayer.setUrl(newUrl);
     }
@@ -226,3 +227,66 @@ document.addEventListener("click", function(event) {
 document.addEventListener('DOMContentLoaded', function() {
     createTileColorOptions();
 });
+
+
+// Flip palette for compute/export layer
+var computePaletteFlipped = false;
+
+function flipComputePalette() {
+  computePaletteFlipped = !computePaletteFlipped;
+  var btn = document.getElementById('computePaletteFlipBtn');
+  if (btn) btn.style.color = computePaletteFlipped ? '#3b82f6' : '';
+
+  var palette = getSelectedPalette();
+  var colormapForBackend = computePaletteFlipped ? palette + '_r' : palette;
+
+  // Reload compute tiles with flipped colormap
+  if (typeof computeLayer !== 'undefined' && computeLayer && computeLayer._exportUid) {
+    var uid = computeLayer._exportUid;
+    if (typeof min !== 'undefined' && typeof max !== 'undefined' && min !== undefined && max !== undefined) {
+      var newUrl = '/export-tile/' + uid + '/{z}/{x}/{y}?colormap=' + colormapForBackend + '&vmin=' + min + '&vmax=' + max;
+      computeLayer.setUrl(newUrl);
+    }
+  }
+
+  // Update legend with flipped colors
+  if (typeof updateLegend === 'function') {
+    updateLegend(palette);
+  }
+
+  // Flip the palette button display
+  var paletteBtn = document.getElementById('PaletteSelectButton');
+  if (paletteBtn) {
+    paletteBtn.style.transform = computePaletteFlipped ? 'scaleX(-1)' : '';
+  }
+}
+
+// Flip palette for tiles/live layer
+var tilePaletteFlipped = false;
+
+function flipTilePalette() {
+  tilePaletteFlipped = !tilePaletteFlipped;
+  var btn = document.getElementById('tilePaletteFlipBtn');
+  if (btn) btn.style.color = tilePaletteFlipped ? '#3b82f6' : '';
+
+  // Reload tile layer with flipped colormap
+  if (typeof liveLayer !== 'undefined' && liveLayer) {
+    var currentUrl = liveLayer._url;
+    var palette = selectedTilePalette;
+    var colormapParam = tilePaletteFlipped ? palette + '_r' : palette;
+
+    var newUrl;
+    if (currentUrl.includes('colormap_str=')) {
+      newUrl = currentUrl.replace(/colormap_str=[^&]*/, 'colormap_str=' + colormapParam);
+    } else {
+      newUrl = currentUrl + '&colormap_str=' + colormapParam;
+    }
+    liveLayer.setUrl(newUrl);
+  }
+
+  // Flip the palette button display
+  var paletteBtn = document.getElementById('TilePaletteSelectButton');
+  if (paletteBtn) {
+    paletteBtn.style.transform = tilePaletteFlipped ? 'scaleX(-1)' : '';
+  }
+}

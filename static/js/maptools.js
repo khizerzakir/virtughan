@@ -383,7 +383,7 @@
   // Coordinate display (bottom-right)
   var coordDisplay = L.DomUtil.create('div', 'leaflet-control');
   coordDisplay.id = 'coord-display';
-  coordDisplay.style.cssText = 'position:absolute;bottom:25px;right:10px;background:rgba(255,255,255,0.95);padding:8px 12px;border-radius:6px;font-size:13px;color:#1f2937;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:1000;display:none;font-weight:500;';
+  coordDisplay.style.cssText = 'position:absolute;bottom:25px;left:10px;background:rgba(255,255,255,0.95);padding:8px 12px;border-radius:6px;font-size:13px;color:#1f2937;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:1000;display:none;font-weight:500;';
   document.getElementById('map').appendChild(coordDisplay);
 
   // Go to Lat/Lon
