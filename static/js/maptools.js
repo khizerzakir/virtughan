@@ -88,6 +88,12 @@
 
   map.addControl(new MapToolsControl());
 
+  // Move loader control to appear after tools in the DOM
+  var loaderEl = document.querySelector('.leaflet-control-loader');
+  if (loaderEl && loaderEl.parentNode) {
+    loaderEl.parentNode.appendChild(loaderEl);
+  }
+
   function toggleDropdown(id) {
     var el = document.getElementById(id);
     var all = ['export-tool-dropdown', 'measure-tool-dropdown', 'point-tool-dropdown'];
@@ -116,16 +122,29 @@
 
   function exportMap(format) {
     var mapEl = document.getElementById('map');
-    // Hide all controls except legend before capture
-    var controls = mapEl.querySelectorAll('.leaflet-control-container .leaflet-control');
-    var legend = document.getElementById('legend');
-    controls.forEach(function (ctrl) { ctrl.style.visibility = 'hidden'; });
-    if (legend) legend.style.visibility = 'visible';
 
-    html2canvas(mapEl, { useCORS: true, allowTaint: true }).then(function (canvas) {
-      // Restore controls
-      controls.forEach(function (ctrl) { ctrl.style.visibility = ''; });
+    // Check if tiles are still loading
+    var isLoading = document.querySelector('.leaflet-control-loader');
+    if (isLoading && isLoading.style.display === 'block') {
+      showMessage('message', 5000, 'Please wait until tiles finish loading to export.');
+      return;
+    }
 
+    html2canvas(mapEl, {
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      imageTimeout: 0,
+      ignoreElements: function(el) {
+        // Hide all controls except legend during capture
+        if (el.classList && el.classList.contains('leaflet-control') && el.id !== 'legend') {
+          return true;
+        }
+        if (el.id === 'zoom-warning-overlay') return true;
+        if (el.id === 'coord-display') return true;
+        return false;
+      }
+    }).then(function (canvas) {
       if (format === 'png') {
         var link = document.createElement('a');
         link.download = 'map-export.png';
@@ -140,8 +159,9 @@
         pdf.addImage(imgData, 'PNG', 0, 0, width, height);
         pdf.save('map-export.pdf');
       }
-    }).catch(function () {
-      controls.forEach(function (ctrl) { ctrl.style.visibility = ''; });
+    }).catch(function (err) {
+      console.error('Export failed:', err);
+      showMessage('warning', 5000, 'Export failed. Try with a different basemap (ESRI Satellite or OSM).');
     });
   }
 
