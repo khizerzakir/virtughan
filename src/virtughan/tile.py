@@ -35,8 +35,18 @@ class TileProcessor:
 
     @staticmethod
     def apply_colormap(result: np.ndarray, colormap_str: str) -> Image.Image:
+        _CMAP_ALIASES = {
+            'PrGn': 'PRGn', 'Viridis': 'viridis', 'Inferno': 'inferno',
+            'Magma': 'magma', 'Plasma': 'plasma', 'Cividis': 'cividis',
+            'PrGn_r': 'PRGn_r', 'Viridis_r': 'viridis_r', 'Inferno_r': 'inferno_r',
+            'Magma_r': 'magma_r', 'Plasma_r': 'plasma_r', 'Cividis_r': 'cividis_r',
+        }
+        cmap_name = _CMAP_ALIASES.get(colormap_str, colormap_str)
+        try:
+            colormap = plt.get_cmap(cmap_name)
+        except ValueError:
+            colormap = plt.get_cmap('RdYlGn')
         result_normalized = (result - result.min()) / (result.max() - result.min())
-        colormap = plt.get_cmap(colormap_str)
         result_colored = colormap(result_normalized)
         result_image = (result_colored[:, :, :3] * 255).astype(np.uint8)
         return Image.fromarray(result_image)

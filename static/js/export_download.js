@@ -389,8 +389,10 @@ downloading = false;
         if (computeLayer && computeLayer._exportUid) {
           var uid = computeLayer._exportUid;
           var colormapForBackend = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped) ? scaleName + '_r' : scaleName;
-          var newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${colormapForBackend}&vmin=${min}&vmax=${max}`;
-          computeLayer.setUrl(newUrl);
+          if (typeof min !== 'undefined' && typeof max !== 'undefined' && min !== undefined && max !== undefined) {
+            var newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${colormapForBackend}&vmin=${min}&vmax=${max}`;
+            computeLayer.setUrl(newUrl);
+          }
         }
       }
 

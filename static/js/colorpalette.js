@@ -243,8 +243,10 @@ function flipComputePalette() {
   // Reload compute tiles with flipped colormap
   if (typeof computeLayer !== 'undefined' && computeLayer && computeLayer._exportUid) {
     var uid = computeLayer._exportUid;
-    var newUrl = '/export-tile/' + uid + '/{z}/{x}/{y}?colormap=' + colormapForBackend + '&vmin=' + min + '&vmax=' + max;
-    computeLayer.setUrl(newUrl);
+    if (typeof min !== 'undefined' && typeof max !== 'undefined' && min !== undefined && max !== undefined) {
+      var newUrl = '/export-tile/' + uid + '/{z}/{x}/{y}?colormap=' + colormapForBackend + '&vmin=' + min + '&vmax=' + max;
+      computeLayer.setUrl(newUrl);
+    }
   }
 
   // Update legend with flipped colors
