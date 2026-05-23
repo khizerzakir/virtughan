@@ -593,7 +593,16 @@ def _render_export_tile(
         else:
             normalized = np.clip((band_data - vmin) / (vmax - vmin), 0, 1)
 
-        cmap = plt.get_cmap(colormap)
+        # Map d3 colorscale names to matplotlib equivalents
+        _CMAP_ALIASES = {
+            'PrGn': 'PRGn', 'Viridis': 'viridis', 'Inferno': 'inferno',
+            'Magma': 'magma', 'Plasma': 'plasma', 'Cividis': 'cividis',
+        }
+        cmap_name = _CMAP_ALIASES.get(colormap, colormap)
+        try:
+            cmap = plt.get_cmap(cmap_name)
+        except ValueError:
+            cmap = plt.get_cmap('RdYlGn')
         colored = cmap(normalized)  # (h, w, 4) RGBA float 0-1
         rgba = (colored * 255).astype(np.uint8)
         rgba[nodata_mask] = [0, 0, 0, 0]  # transparent nodata

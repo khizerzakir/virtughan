@@ -403,8 +403,8 @@ downloading = false;
         // Clear existing legend items
         legend.innerHTML = '';
 
-        // Create legend items based on color scale and pixel value range
-        for (let i = 0; i < steps; i++) {
+        // Create legend items from high to low (top to bottom)
+        for (let i = steps - 1; i >= 0; i--) {
             const value = min + i * stepValue;
             const color = d3.scaleSequential(colorScale).domain([min, max])(value);
 
