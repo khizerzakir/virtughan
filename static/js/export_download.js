@@ -82,11 +82,15 @@ downloading = false;
           var areaKm2 = area / 1000000;
           // console.log('Area: ' + areaKm2.toFixed(2) + ' square kilometers');
   
-          if(areaKm2 > 500){
-            // showMessage('success', "message");
-            showMessage('warning', 10000, "Zoom in or reduce the size of your area of interest. <br/> Eg. smaller AOI than 500 SQ.Km. Sorry, this is due to limited server specs.");
+          if(areaKm2 > 5000){
+            showMessage('error', 0, "Area too large (" + areaKm2.toFixed(0) + " km²). Maximum allowed is 5,000 km². Please zoom in or draw a smaller area of interest.");
+            return;
           }
-          else{ // if aoi area is fine
+          else if(areaKm2 > 2500){
+            showMessage('warning', 15000, "Large area selected (" + areaKm2.toFixed(0) + " km²). Processing may take several minutes. Consider reducing the area for faster results.");
+          }
+          // proceed with export
+        {
         
         var url_compute = `/export?bbox=${export_params.bbox}&start_date=${encodeURIComponent(export_params.startDdate)}&end_date=${encodeURIComponent(export_params.endDate)}&cloud_cover=${export_params.cloudCover}&formula=${encodeURIComponent(export_params.formula)}&bands=${encodeURIComponent(export_params.bands)}&timeseries=${encodeURIComponent(export_params.timeseries)}&smart_filters=${smartFilters}&collection=${encodeURIComponent(export_params.collection)}`;
 
@@ -222,7 +226,13 @@ downloading = false;
 
         function updateProgress(logData, isAnalyze) {
           if (logData.includes('No images found') || logData.includes('Filtered 0 items') || logData.includes('Scenes covering input area: 0')) {
-              displayNoImageFoundMessage();
+              var msg = 'No image found / try smaller Area';
+              if (logData.includes('Scenes covering input area: 0')) {
+                msg = '0 scenes fully covering input area / try smaller Area';
+              } else if (logData.includes('Filtered 0 items')) {
+                msg = '0 items after filtering / adjust date or cloud cover';
+              }
+              displayNoImageFoundMessage(msg, isAnalyze);
           } else {
               const progressListId = isAnalyze ? 'ProgressTextsBefore' : 'DownloadProgressTexts';
               const progressName = isAnalyze ? 'compute' : 'download';
@@ -302,7 +312,7 @@ downloading = false;
             map.removeLayer(computeLayer);
         }
 
-        }//end of else, warning
+        }//end of area check
 
       });
 

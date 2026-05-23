@@ -1151,6 +1151,13 @@
 
 
   <div id="map" class = "w-full md:w-3/4 md:min-w-[75%] min-h-screen md:min-h-full z-0">
+    <div id="zoom-warning-overlay" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:800;background:rgba(0,0,0,0.4);align-items:center;justify-content:center;pointer-events:none;">
+      <div style="background:white;padding:16px 24px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);text-align:center;pointer-events:auto;">
+        <i class="fa-solid fa-magnifying-glass-plus text-blue-500 text-2xl mb-2"></i>
+        <p style="font-size:14px;font-weight:600;color:#1f2937;margin:8px 0 4px;">Zoom in to view tiles</p>
+        <p style="font-size:12px;color:#6b7280;">Tile data requires zoom level 10 or higher</p>
+      </div>
+    </div>
   </div>
   <div id="legend" class="legends hidden text-gray-xs"></div>
   
@@ -1736,9 +1743,16 @@
       // Update progress based on fetched data
       const progressBar = document.getElementById(`${name}_progress`);
       const progressBarContainer = document.getElementById(`${name}_progressbar`);
+      const progressText = document.getElementById(`${name}_progress_text`);
 
       progressBar.style.width = progress + '%';
-      document.getElementById(`${name}_progress_text`).textContent = `${Math.floor(progress)}%`;
+      if (progress === 0) {
+        progressText.textContent = 'Please wait, processing...';
+        progressText.style.color = '#6b7280';
+      } else {
+        progressText.textContent = `${Math.floor(progress)}%`;
+        progressText.style.color = 'white';
+      }
 
       // Hide progress bar if complete
       if (progress >= 100) {
@@ -1758,16 +1772,24 @@
       }
     }
 
-    function displayNoImageFoundMessage() {
-      const progressBarContainer = document.getElementById('compute_progressbar');
-      const progressText = document.getElementById('compute_progress_text');
-      document.getElementById("ProgressTextsBefore").innerHTML = "";
+    function displayNoImageFoundMessage(msg, isAnalyze) {
+      msg = msg || 'No image found / try smaller AOI';
+      var progressBarId = isAnalyze ? 'compute_progressbar' : 'download_progressbar';
+      var progressTextId = isAnalyze ? 'compute_progress_text' : 'download_progress_text';
+      var progressListId = isAnalyze ? 'ProgressTextsBefore' : 'DownloadProgressTexts';
+
+      const progressBarContainer = document.getElementById(progressBarId);
+      const progressText = document.getElementById(progressTextId);
+      const progressList = document.getElementById(progressListId);
+      if (progressList) progressList.innerHTML = "";
       
-      progressText.style.removeProperty('font-size');
-      progressText.textContent = 'No image found/ try smaller AOI';
-      progressText.style.fontSize = "10px !important";
-      progressText.style.color = 'red';
-      progressBarContainer.style.display = 'block';
+      if (progressText) {
+        progressText.style.removeProperty('font-size');
+        progressText.textContent = msg;
+        progressText.style.fontSize = "10px";
+        progressText.style.color = 'red';
+      }
+      if (progressBarContainer) progressBarContainer.style.display = 'block';
     }
 
   </script>

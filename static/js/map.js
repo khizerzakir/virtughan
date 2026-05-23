@@ -242,6 +242,15 @@ var map = L.map("map").setView([28.202082, 83.957222], 15);
         document.getElementById("coords").textContent = tile_params.bbox;
         if(export_params_bbox_changed){}else{document.getElementById("map-window-content").innerHTML = export_params.bbox;}
         document.getElementById("zoom-level").textContent = map.getZoom();
+        // Show zoom warning if tiles are active and zoom < 10
+        var zoomWarning = document.getElementById('zoom-warning-overlay');
+        if (zoomWarning) {
+          if (map.getZoom() < 10 && liveLayer && map.hasLayer(liveLayer)) {
+            zoomWarning.style.display = 'flex';
+          } else {
+            zoomWarning.style.display = 'none';
+          }
+        }
       });
 
       function parseBboxString(bboxValue) {
