@@ -114,18 +114,20 @@ function updateLayerSectionsForSource(source, hasResults) {
   const showAnalyzeLayers = source === "analyze" && hasResults;
   const showDownloadLayers = source === "download" && hasResults;
 
-  // layerSwitcherContainer should be visible if ANY source has active content
-  const hasAnyContent = resultSourceState.search || resultSourceState.analyze || resultSourceState.download;
+  // layerSwitcherContainer should be visible if ANY source has active content or liveLayer is on map
+  var liveLayerOnMap = (typeof liveLayer !== "undefined" && liveLayer && typeof map !== "undefined" && map.hasLayer(liveLayer));
+  var hasAnyContent = resultSourceState.search || resultSourceState.analyze || resultSourceState.download || liveLayerOnMap;
   if (layerSwitcherContainer) {
     layerSwitcherContainer.classList.toggle("hidden", !hasAnyContent);
   }
 
-  // Search layers: toggle based on active source
+  // Search layers: show if active source is search AND (has results OR liveLayer is on map)
+  var liveLayerActive = (typeof liveLayer !== "undefined" && liveLayer && typeof map !== "undefined" && map.hasLayer(liveLayer));
   if (searchLayerSwitcher) {
-    searchLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
+    searchLayerSwitcher.classList.toggle("hidden", !(showSearchLayers || (source === "search" && liveLayerActive)));
   }
   if (searchBboxLayerSwitcher) {
-    searchBboxLayerSwitcher.classList.toggle("hidden", !showSearchLayers);
+    searchBboxLayerSwitcher.classList.toggle("hidden", !(showSearchLayers));
   }
 
   // Bbox layers for analyze/download: toggle based on active source
