@@ -101,21 +101,21 @@ def smart_filter_images(
     end = datetime.fromisoformat(end_date)
     total_days = (end - start).days
 
-    if total_days <= 30 * 3:
-        # For a time range of up to 3 months, select 1 image per 4 days
-        frequency = timedelta(days=4)
+    if total_days <= 90:
+        # Up to 3 months: select 1 image per 14 days (bi-weekly)
+        frequency = timedelta(days=14)
 
     elif total_days <= 365:
-        frequency = timedelta(days=15)
-
-    elif total_days <= 2 * 365:
+        # Up to 1 year: select 1 image per month
         frequency = timedelta(days=30)
 
     elif total_days <= 3 * 365:
-        frequency = timedelta(days=45)
+        # Up to 3 years: select 1 image per quarter
+        frequency = timedelta(days=90)
+
     else:
-        # rest, select 1 image per 2 months
-        frequency = timedelta(days=60)
+        # More than 3 years: select 1 image per 6 months
+        frequency = timedelta(days=180)
 
     filtered_features = []
     last_selected_date = None
