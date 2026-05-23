@@ -398,15 +398,24 @@ downloading = false;
       function updateLegend(paletteName) {
         const legend = document.getElementById('legend');
         const colorScale = colorScales[paletteName];
-        const steps = 10; // Number of steps in the legend
+        const steps = 10;
         const stepValue = (max - min) / (steps - 1);
         const flipped = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped);
 
-        // Clear existing legend items
         legend.innerHTML = '';
 
-        // Create legend items from high to low (top to bottom)
-        for (let i = steps - 1; i >= 0; i--) {
+        // Title with minimize button
+        const title = document.createElement('div');
+        title.className = 'legend-title';
+        title.innerHTML = '<span>Compute Output Layer</span><span class="legend-minimize-btn" id="legend-minimize" title="Minimize"><i class="fa-solid fa-minus"></i></span>';
+        legend.appendChild(title);
+
+        // Color bar container
+        const bar = document.createElement('div');
+        bar.className = 'legend-bar';
+        bar.id = 'legend-bar-content';
+
+        for (let i = 0; i < steps; i++) {
             const value = min + i * stepValue;
             const colorInput = flipped ? 1 - (i / (steps - 1)) : i / (steps - 1);
             const color = colorScale(colorInput);
@@ -419,12 +428,26 @@ downloading = false;
             colorBox.style.backgroundColor = color;
 
             const labelText = document.createElement('span');
-            labelText.textContent = `${value.toFixed(2)}`;
+            labelText.textContent = value.toFixed(2);
 
             legendItem.appendChild(colorBox);
             legendItem.appendChild(labelText);
-            legend.appendChild(legendItem);
+            bar.appendChild(legendItem);
         }
+
+        legend.appendChild(bar);
+
+        // Minimize toggle
+        document.getElementById('legend-minimize').addEventListener('click', function() {
+          var content = document.getElementById('legend-bar-content');
+          if (content.style.display === 'none') {
+            content.style.display = 'flex';
+            this.innerHTML = '<i class="fa-solid fa-minus"></i>';
+          } else {
+            content.style.display = 'none';
+            this.innerHTML = '<i class="fa-solid fa-plus"></i>';
+          }
+        });
     }
 
 
