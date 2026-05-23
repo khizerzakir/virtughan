@@ -574,13 +574,19 @@ async def get_export_tile(
     x: int,
     y: int,
     colormap: str = Query("RdYlGn", description="Matplotlib colormap name"),
-    vmin: float = Query(..., description="Global min value for normalization"),
-    vmax: float = Query(..., description="Global max value for normalization"),
+    vmin: float | None = Query(None, description="Global min value for normalization"),
+    vmax: float | None = Query(None, description="Global max value for normalization"),
 ):
     """Serve a colored tile from a completed export GeoTIFF."""
     tif_path = _safe_uid_path(uid, "custom_band_output_aggregate.tif")
     if not os.path.exists(tif_path):
         raise HTTPException(status_code=404, detail="Export result not found")
+
+    # If vmin/vmax not provided, read from metadata
+    if vmin is None or vmax is None:
+        metadata = await asyncio.to_thread(_read_export_metadata, tif_path)
+        vmin = metadata["min"] if vmin is None else vmin
+        vmax = metadata["max"] if vmax is None else vmax
 
     try:
         image_bytes = await asyncio.to_thread(
