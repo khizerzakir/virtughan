@@ -597,6 +597,8 @@ def _render_export_tile(
         _CMAP_ALIASES = {
             'PrGn': 'PRGn', 'Viridis': 'viridis', 'Inferno': 'inferno',
             'Magma': 'magma', 'Plasma': 'plasma', 'Cividis': 'cividis',
+            'PrGn_r': 'PRGn_r', 'Viridis_r': 'viridis_r', 'Inferno_r': 'inferno_r',
+            'Magma_r': 'magma_r', 'Plasma_r': 'plasma_r', 'Cividis_r': 'cividis_r',
         }
         cmap_name = _CMAP_ALIASES.get(colormap, colormap)
         try:

@@ -616,8 +616,13 @@
                         <input id = "transparency_liveLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
                       <div id="tileColorPalettes" class="relative inline-block w-full">
-                        <button id="TilePaletteSelectButton" class="block w-full px-4 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleTilePaletteDropdown()">
-                        </button>
+                        <div class="flex items-center gap-1 mt-1">
+                          <button id="TilePaletteSelectButton" class="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleTilePaletteDropdown()">
+                          </button>
+                          <button id="tilePaletteFlipBtn" type="button" class="px-2 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:text-blue-600 text-sm" title="Flip colormap" onclick="flipTilePalette()">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                          </button>
+                        </div>
                         <div id="TilePaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
                             <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
                             </ul>
@@ -687,9 +692,14 @@
                         <input id="transparency_computeLayer" type="range" class="transparency-slider h-1 w-full" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
                       <div id="colorPalettes" class="relative inline-block w-full">
-                        <button id="PaletteSelectButton" class="block w-full px-4 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleDropdown()">
-                            <!-- Default selected color will be displayed here -->
-                        </button>
+                        <div class="flex items-center gap-1 mt-1">
+                          <button id="PaletteSelectButton" class="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onclick="toggleDropdown()">
+                              <!-- Default selected color will be displayed here -->
+                          </button>
+                          <button id="computePaletteFlipBtn" type="button" class="px-2 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:text-blue-600 text-sm" title="Flip colormap" onclick="flipComputePalette()">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                          </button>
+                        </div>
                         <div id="PaletteSelect" class="absolute z-10 hidden w-full mt-1 bg-white rounded-md shadow-lg">
                             <ul class="py-1 text-base text-gray-700 border border-gray-300 rounded-md max-h-56 overflow-y-auto focus:outline-none sm:text-sm">
                                 <!-- Options will be generated here -->

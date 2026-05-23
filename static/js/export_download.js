@@ -387,8 +387,9 @@ downloading = false;
 
       function updateRasterColor(scaleName) {
         if (computeLayer && computeLayer._exportUid) {
-          const uid = computeLayer._exportUid;
-          const newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${scaleName}&vmin=${min}&vmax=${max}`;
+          var uid = computeLayer._exportUid;
+          var colormapForBackend = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped) ? scaleName + '_r' : scaleName;
+          var newUrl = `/export-tile/${uid}/{z}/{x}/{y}?colormap=${colormapForBackend}&vmin=${min}&vmax=${max}`;
           computeLayer.setUrl(newUrl);
         }
       }
@@ -399,6 +400,7 @@ downloading = false;
         const colorScale = colorScales[paletteName];
         const steps = 10; // Number of steps in the legend
         const stepValue = (max - min) / (steps - 1);
+        const flipped = (typeof computePaletteFlipped !== 'undefined' && computePaletteFlipped);
 
         // Clear existing legend items
         legend.innerHTML = '';
@@ -406,7 +408,8 @@ downloading = false;
         // Create legend items from high to low (top to bottom)
         for (let i = steps - 1; i >= 0; i--) {
             const value = min + i * stepValue;
-            const color = d3.scaleSequential(colorScale).domain([min, max])(value);
+            const colorInput = flipped ? 1 - (i / (steps - 1)) : i / (steps - 1);
+            const color = colorScale(colorInput);
 
             const legendItem = document.createElement('div');
             legendItem.className = 'legend-item';
