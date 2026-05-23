@@ -659,52 +659,6 @@
                         </div>
                       </div>
                     </div>
-                    <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="search">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                          <input id="search_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="search">
-                          <label id="images_bbox_label_search" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Tiles)</label>
-                        </div>
-                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
-                          <i id="zoom_geojsonLayer" class="zoom-to-layer fas fa-search-plus"></i>
-                        </button>
-                      </div>
-                      <div class="flex items-center mb-2">
-                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
-                        <input id = "transparency_geojsonLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
-                      </div>
-                    </div>
-                    <div id = "analyzeBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="analyze">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                          <input id="analyze_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="analyze">
-                          <label id="images_bbox_label_analyze" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Compute)</label>
-                        </div>
-                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
-                          <i id="zoom_analyzeBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
-                        </button>
-                      </div>
-                      <div class="flex items-center mb-2">
-                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
-                        <input id = "transparency_analyzeBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
-                      </div>
-                    </div>
-                    <div id = "downloadBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="download">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                          <input id="download_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="download">
-                          <label id="images_bbox_label_download" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Download)</label>
-                        </div>
-                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
-                          <i id="zoom_downloadBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
-                        </button>
-                      </div>
-                      <div class="flex items-center mb-2">
-                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
-                        <input id = "transparency_downloadBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
-                      </div>
-                    </div>
-
                     <div id="computeLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden">
                       <div id = "layerSwitcherBox" class = "hidden">
                       <div class="flex items-center justify-between mb-2">
@@ -779,6 +733,52 @@
                           <div class="absolute inset-0 flex items-center justify-center text-white" id="download_progress_text">0%</div>
                           <div class="bg-green-500 h-full rounded transition-all duration-500 ease-in-out" id="download_progress" style="width: 0%"></div>
                         </div>
+                      </div>
+                    </div>
+
+                    <div id = "searchBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="search">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="search_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="search">
+                          <label id="images_bbox_label_search" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Tiles)</label>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_geojsonLayer" class="zoom-to-layer fas fa-search-plus"></i>
+                        </button>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
+                        <input id = "transparency_geojsonLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
+                      </div>
+                    </div>
+                    <div id = "analyzeBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="analyze">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="analyze_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="analyze">
+                          <label id="images_bbox_label_analyze" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Compute)</label>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_analyzeBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
+                        </button>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
+                        <input id = "transparency_analyzeBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
+                      </div>
+                    </div>
+                    <div id = "downloadBboxLayerSwitcher" class="progressItem p-2 bg-gray-100 rounded-md shadow-sm mt-2 hidden" data-source="download">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                          <input id="download_bbox_layer" type="checkbox" class="layerSwitcher bboxLayerSwitcher form-checkbox h-4 w-4 text-blue-600" data-source="download">
+                          <label id="images_bbox_label_download" class="block text-sm/6 font-medium text-gray-700">Images Bbox (Download)</label>
+                        </div>
+                        <button title="Zoom to Layer" class="text-gray-500 hover:text-gray-700">
+                          <i id="zoom_downloadBboxLayer" class="zoom-to-layer fas fa-search-plus"></i>
+                        </button>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <span class="text-sm mr-2 text-gray-500">Transparency:</span>
+                        <input id = "transparency_downloadBboxLayer" type="range" class="transparency-slider h-1 w-full text-gray-500" style="accent-color: gray;" min="0" max="100" value="100">
                       </div>
                     </div>
                           
