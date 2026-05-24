@@ -8,9 +8,11 @@
       if(layerId == "search_layer"){
           if(checkedStatus){
             map.addLayer(liveLayer);
+            if (typeof showLoaderOnMap === 'function') showLoaderOnMap(liveLayer, false);
           }
           else{
             map.removeLayer(liveLayer);
+            if (typeof showLoaderOnMap === 'function') showLoaderOnMap(null, false);
           }
       }
       else if(event.target.classList.contains('bboxLayerSwitcher')){

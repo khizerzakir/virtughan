@@ -344,6 +344,7 @@ function clearActiveOutputLayer() {
     if (liveLayer && map && map.hasLayer(liveLayer)) {
       map.removeLayer(liveLayer);
     }
+    if (typeof showLoaderOnMap === 'function') showLoaderOnMap(null, false);
   }
 
   if (source === "analyze") {
