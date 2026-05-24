@@ -127,6 +127,22 @@ function getBandNames(collection) {
   return COLLECTION_BANDS_FALLBACK[collection] || COLLECTION_BANDS_FALLBACK["sentinel-2-l2a"];
 }
 
+function getFinestResolution(bandsStr, collection) {
+  if (!bandsStr || !collection) return '';
+  var bands = bandsStr.split(',').map(function(b) { return b.trim(); });
+  var bandData = collectionMetadata?.[collection]?.bands || {};
+  var finest = null;
+  bands.forEach(function(band) {
+    var info = bandData[band];
+    if (info && info.resolution) {
+      if (finest === null || info.resolution < finest) {
+        finest = info.resolution;
+      }
+    }
+  });
+  return finest || '';
+}
+
 function renderBandCheckboxes(collection) {
   const container = document.getElementById("list_of_bands");
   if (!container) {
@@ -368,6 +384,24 @@ function updateBandsBox() {
     const mappedBandsList = document.getElementById("mapped-bands");
     if (mappedBandsList) {
       mappedBandsList.innerHTML = selectedBands.map(band => `<li class="attribute-item hover:bg-gray-100 p-1">${band}</li>`).join('');
+    }
+
+    // Check for resolution mismatch
+    var note = document.getElementById('resolution-mismatch-note');
+    if (note && selectedBands.length > 1) {
+      var collection = export_params.collection || 'sentinel-2-l2a';
+      var bandData = collectionMetadata?.[collection]?.bands || {};
+      var resolutions = selectedBands.map(function(b) { return bandData[b]?.resolution; }).filter(Boolean);
+      var unique = [...new Set(resolutions)];
+      if (unique.length > 1) {
+        var finest = Math.min(...unique);
+        document.getElementById('finest-res-value').textContent = finest;
+        note.classList.remove('hidden');
+      } else {
+        note.classList.add('hidden');
+      }
+    } else if (note) {
+      note.classList.add('hidden');
     }
 }
 

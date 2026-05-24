@@ -372,7 +372,8 @@ downloading = false;
               var filterBtn = document.getElementById('select-button_export');
               var filterName = filterBtn ? filterBtn.querySelector('.truncate').innerText : '';
               var label = (filterName && filterName !== 'Select Option') ? filterName + ' | ' : 'Custom | ';
-              computeInfo.setAttribute('data-formula', label + export_params.formula);
+              var pixelSize = (typeof getFinestResolution === 'function') ? getFinestResolution(export_params.bands, export_params.collection) : '';
+              computeInfo.setAttribute('data-formula', label + export_params.formula + (pixelSize ? ' | Pixel: ' + pixelSize + 'm' : ''));
             }
 
             // Fit map to the raster bounds
@@ -422,11 +423,12 @@ downloading = false;
         title.innerHTML = '<span>Compute Output Layer</span><span class="legend-minimize-btn" id="legend-minimize" title="Minimize"><i class="fa-solid fa-minus"></i></span>';
         legend.appendChild(title);
 
-        // Formula subtitle
+        // Formula subtitle with pixel size
         var filterBtn = document.getElementById('select-button_export');
         var filterName = filterBtn ? filterBtn.querySelector('.truncate') : null;
         var filterLabel = (filterName && filterName.innerText.trim() !== 'Select Option') ? filterName.innerText.trim() : 'Custom';
-        var infoText = filterLabel + ' | ' + export_params.formula;
+        var pixelSize = getFinestResolution(export_params.bands, export_params.collection);
+        var infoText = filterLabel + ' | ' + export_params.formula + (pixelSize ? ' | Pixel: ' + pixelSize + 'm' : '');
         var subtitle = document.createElement('div');
         subtitle.style.cssText = 'font-size:9px;color:#6b7280;margin-bottom:4px;';
         subtitle.textContent = infoText;
