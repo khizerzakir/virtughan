@@ -8,8 +8,11 @@ tags:
   - Python
 authors:
   - name: "Kshitij Raj Sharma"
+    orcid: "0000-0002-2123-3917"
+    corresponding: true
     affiliation: 1
   - name: "Upendra Oli"
+    orcid: "0009-0006-5140-5077"
     affiliation: 1
 affiliations:
   - name: "Paris Lodron University of Salzburg, Austria"
